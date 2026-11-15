@@ -1,4 +1,5 @@
 import { translate, type TranslationMessage } from '../../i18n/index.js'
+import type { ApiCapability } from './capability.js'
 import { readMessageEvent } from './parseEvent.js'
 import { readServerSentEvents } from './sse.js'
 import type {
@@ -11,10 +12,35 @@ import type {
 
 /** 构建期 API 地址，默认 https://api.deepseek.com；本地开发支持开发服务器代理 */
 export const API_ORIGIN = __API_ORIGIN__
-/** Anthropic 兼容接口的前缀 */
-const ANTHROPIC_BASE_URL = `${API_ORIGIN}/anthropic/v1`
 /** 引用 Files API 上传的图片、调用 Anthropic 兼容 Files API 时必须携带 */
 const FILES_BETA = 'files-api-2025-04-14'
+
+/**
+ * 分能力接口的解析入口：设置里给某条能力配了地址或密钥时由 endpoints.ts 装进来，
+ * 没装（测试、纯命令行调用）就退回构建期地址与调用方传的密钥。
+ */
+export type ResolvedEndpoint = {
+  /** 服务地址，不带路径，例如 https://api.deepseek.com */
+  origin: string
+  /** 该能力自己的密钥；为空时用调用方传进来的 */
+  apiKey: string | null
+}
+
+let endpointResolver: (capability: ApiCapability) => ResolvedEndpoint | null = () => null
+
+export const setEndpointResolver = (resolver: (capability: ApiCapability) => ResolvedEndpoint) => {
+  endpointResolver = resolver
+}
+
+export const resolveEndpointFor = (capability: ApiCapability, apiKey: string) => {
+  const resolved = endpointResolver(capability)
+  const origin = resolved?.origin || API_ORIGIN
+  return {
+    origin,
+    apiKey: resolved?.apiKey || apiKey,
+    anthropic: `${origin}/anthropic/v1`,
+  }
+}
 
 export type ApiErrorKind =
   /** 非 2xx 响应 */
@@ -91,7 +117,8 @@ const anthropicHeaders = (apiKey: string, beta: boolean): Record<string, string>
 
 /** 用 GET /models 校验 API Key（不产生费用） */
 export const verifyApiKey = async (apiKey: string, signal?: AbortSignal): Promise<void> => {
-  await request(`${API_ORIGIN}/models`, {
+  const { origin } = resolveEndpointFor('chat', apiKey)
+  await request(`${origin}/models`, {
     method: 'GET',
     headers: { Authorization: `Bearer ${apiKey}` },
     signal,
@@ -113,9 +140,10 @@ export const uploadFile = async (
     form.append('purpose', purpose)
   }
   form.append('file', file)
-  const response = await request(`${ANTHROPIC_BASE_URL}/files`, {
+  const endpoint = resolveEndpointFor('chat', apiKey)
+  const response = await request(`${endpoint.anthropic}/files`, {
     method: 'POST',
-    headers: anthropicHeaders(apiKey, true),
+    headers: anthropicHeaders(endpoint.apiKey, true),
     body: form,
     signal,
   })
@@ -124,9 +152,10 @@ export const uploadFile = async (
 
 /** DELETE /anthropic/v1/files/{file_id} */
 export const deleteFile = async (apiKey: string, fileId: string): Promise<void> => {
-  await request(`${ANTHROPIC_BASE_URL}/files/${encodeURIComponent(fileId)}`, {
+  const endpoint = resolveEndpointFor('chat', apiKey)
+  await request(`${endpoint.anthropic}/files/${encodeURIComponent(fileId)}`, {
     method: 'DELETE',
-    headers: anthropicHeaders(apiKey, true),
+    headers: anthropicHeaders(endpoint.apiKey, true),
   })
 }
 
@@ -146,10 +175,11 @@ export async function* streamMessage(
   body: CreateMessageRequest,
   signal: AbortSignal
 ): AsyncGenerator<MessageStreamEvent> {
-  const response = await request(`${ANTHROPIC_BASE_URL}/messages`, {
+  const endpoint = resolveEndpointFor('chat', apiKey)
+  const response = await request(`${endpoint.anthropic}/messages`, {
     method: 'POST',
     headers: {
-      ...anthropicHeaders(apiKey, hasFile(body)),
+      ...anthropicHeaders(endpoint.apiKey, hasFile(body)),
       'Content-Type': 'application/json',
       Accept: 'text/event-stream',
     },

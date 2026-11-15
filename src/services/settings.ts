@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { API_CAPABILITIES, type ApiCapability } from './api/capability.js'
 import type { TtsVoice } from './api/speech.js'
 import { normalizeLocation, type UserLocation } from './location.js'
 
@@ -12,6 +13,21 @@ export type Skin = 'paper' | 'classic'
 
 /** 摘要方式：local 本地拼段（不发请求、零成本），model 调模型生成（更好但多一次请求） */
 export type CompactMode = 'local' | 'model'
+
+/**
+ * 单条能力的接口覆盖。三个字段都是空串时表示完全跟随主接口，
+ * 所以我们不做「未设置」与「显式空」的区分。
+ */
+export type EndpointOverride = {
+  /** 服务地址，例如 https://api.deepseek.com；空串跟随主接口 */
+  baseUrl: string
+  /** 这条能力单独用的密钥；空串跟随全局 API Key */
+  apiKey: string
+  /** 只有对话与摘要用得上；空串用内置默认模型 */
+  model: string
+}
+
+export type EndpointSettings = Record<ApiCapability, EndpointOverride>
 
 /** 本机设置，存 localStorage：API Key、语言、主题、位置、朗读音色、深度思考与智能搜索开关、侧边栏收起状态、上下文压缩 */
 type Settings = {
@@ -35,6 +51,8 @@ type Settings = {
   memoryServiceUrl: string | null
   /** 记忆服务 token；只有自己填了地址时才用得上 */
   memoryServiceToken: string | null
+  /** 分能力接口：把对话、摘要、语音拆到不同服务上去 */
+  endpoints: EndpointSettings
 }
 
 const KEYS = {
@@ -53,6 +71,7 @@ const KEYS = {
   memoryServiceUrl: 'chat-demo:memory-service-url',
   memoryServiceToken: 'chat-demo:memory-service-token',
   memoryPluginEnabled: 'chat-demo:memory-plugin-enabled',
+  endpoints: 'chat-demo:endpoints',
 } as const
 
 const read = (key: string) => {
@@ -124,6 +143,33 @@ const initialMemoryPluginEnabled = (): boolean => {
   return Boolean(read(KEYS.memoryServiceUrl) || read(KEYS.memoryServiceToken))
 }
 
+/** 每条能力都补齐成三个空串，读的时候不用到处判空 */
+const emptyOverride = (): EndpointOverride => ({ baseUrl: '', apiKey: '', model: '' })
+
+const initialEndpoints = (): EndpointSettings => {
+  try {
+    const saved: unknown = JSON.parse(read(KEYS.endpoints) ?? 'null')
+    const out = {} as EndpointSettings
+    for (const capability of API_CAPABILITIES) {
+      const raw = (saved as Record<string, unknown> | null)?.[capability]
+      const item = typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : {}
+      out[capability] = {
+        baseUrl: typeof item.baseUrl === 'string' ? item.baseUrl : '',
+        apiKey: typeof item.apiKey === 'string' ? item.apiKey : '',
+        model: typeof item.model === 'string' ? item.model : '',
+      }
+    }
+    return out
+  } catch {
+    return {
+      chat: emptyOverride(),
+      summary: emptyOverride(),
+      tts: emptyOverride(),
+      asr: emptyOverride(),
+    }
+  }
+}
+
 /** 百分比设置统一按整数存，越界时退回默认值 */
 const readNumber = (key: string, fallback: number, min: number, max: number): number => {
   const value = Number(read(key))
@@ -147,6 +193,7 @@ export const useSettings = create<Settings>(() => ({
   memoryPluginEnabled: initialMemoryPluginEnabled(),
   memoryServiceUrl: read(KEYS.memoryServiceUrl),
   memoryServiceToken: read(KEYS.memoryServiceToken),
+  endpoints: initialEndpoints(),
 }))
 
 export const setLocale = (locale: Locale) => {
@@ -230,4 +277,24 @@ export const setMemoryServiceToken = (value: string | null) => {
 export const setMemoryPluginEnabled = (memoryPluginEnabled: boolean) => {
   write(KEYS.memoryPluginEnabled, String(memoryPluginEnabled))
   useSettings.setState({ memoryPluginEnabled })
+}
+
+/**
+ * 改一条能力的接口覆盖。地址与密钥去掉首尾空格；地址末尾的斜杠去掉，
+ * 否则拼出来的 /anthropic/v1 会出现双斜杠。
+ */
+export const setEndpointOverride = (
+  capability: ApiCapability,
+  patch: Partial<EndpointOverride>
+) => {
+  const current = useSettings.getState().endpoints
+  const merged: EndpointOverride = { ...current[capability], ...patch }
+  const next: EndpointOverride = {
+    baseUrl: merged.baseUrl.trim().replace(/\/+$/, ''),
+    apiKey: merged.apiKey.trim(),
+    model: merged.model.trim(),
+  }
+  const endpoints: EndpointSettings = { ...current, [capability]: next }
+  write(KEYS.endpoints, JSON.stringify(endpoints))
+  useSettings.setState({ endpoints })
 }
