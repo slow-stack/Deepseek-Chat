@@ -1,0 +1,40 @@
+Ariadne
+Copyright (c) 2026 slow-stack
+
+This app is an unofficial client. It is a fork of deepseek-ai/chat-demo:
+
+  deepseek-ai/chat-demo
+  Copyright (c) 2026 DeepSeek
+  MIT License — https://github.com/deepseek-ai/chat-demo
+
+"DeepSeek" is a trademark of its owner. This project is not affiliated with,
+endorsed by, or maintained by DeepSeek.
+
+Interface icons
+---------------
+
+Some icons in src/components/base/icons.tsx are adapted from Lucide, which is
+distributed under the ISC License:
+
+  Lucide Icons
+  Copyright (c) 2026 Lucide Icons and Contributors
+  ISC License — https://lucide.dev
+
+  Permission to use, copy, modify, and/or distribute this software for any
+  purpose with or without fee is hereby granted, provided that the above
+  copyright notice and this permission notice appear in all copies.
+
+  THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+  WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+  MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+  SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+  WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
+  OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+  CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+Bundled dependencies
+--------------------
+
+The production bundle includes third-party packages listed in package.json,
+each under its own license. Run `npx license-checker --summary` (or read
+node_modules/<package>/LICENSE) for the exact texts before redistributing.

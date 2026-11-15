@@ -157,6 +157,17 @@ export const zh = {
   settingDialogAsideGeneralOptionLabel: '通用设置',
   settingDialogAsidePluginsOptionLabel: '插件',
   settingDialogAsideDataOptionLabel: '数据管理',
+  settingDialogAsideAboutOptionLabel: '关于',
+  aboutVersionTitle: '版本',
+  aboutUnofficialTitle: '非官方客户端',
+  aboutUnofficialDescription:
+    '由第三方维护，与 DeepSeek 官方无关联；API 由你自己配置，请求不经过本项目。',
+  aboutLicenseTitle: '许可',
+  aboutLicenseDescription:
+    'MIT 许可，构建产物里带 LICENSE 与 NOTICE；图标来自 Lucide（ISC），其余依赖各自遵循自己的许可。',
+  aboutDataTitle: '数据位置',
+  aboutDataDescription:
+    '会话、附件、项目与配置都存在本机浏览器的 IndexedDB 里，清除站点数据或卸载应用即会删除。',
   avatarMenuSettingsDialogThemeItemLabel: '主题',
   avatarMenuSettingsDialogThemeSelectLightOption: '浅色',
   avatarMenuSettingsDialogThemeSelectDarkOption: '深色',

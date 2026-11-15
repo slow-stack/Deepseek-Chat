@@ -482,3 +482,15 @@
   flex-shrink: 0;
   padding-bottom: 6px;
 }
+
+/* 关于分组里的外链 */
+.aboutLink {
+  flex-shrink: 0;
+  font-size: 13px;
+  color: var(--dsw-alias-brand-primary);
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
