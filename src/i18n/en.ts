@@ -140,6 +140,7 @@ export const en = {
   balanceFailed: 'Could not read the balance. Try again later.',
   balanceEmpty: 'No balance on this account yet',
   balanceEmptyHint: 'Balance is used up — top up to continue',
+  balanceNeedsKey: 'Add the API key above to see the balance',
   balanceRefresh: 'Refresh',
   messageSearchSummary: '1 web page',
   messageSearchSummaries: '{count} web pages',

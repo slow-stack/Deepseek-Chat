@@ -51,29 +51,27 @@ const useBalance = () => {
  * 账户余额：一行金额 + 「刷新」与「前往充值」。
  *
  * 余额不足是最常见的断流原因，摊在数据管理里比等聊天报 402 更早看到。
- * 没有 Key 时不显示这一行——还没开始用，谈不上余额。
+ * 没填 Key 时这一行照样在，只是不查、提示先填 Key —— 藏起来会让人以为没做这个功能。
  */
 export const BalanceSetting = () => {
   const t = useTranslate()
   const { apiKey, balance, busy, failure, load } = useBalance()
 
-  if (!apiKey) {
-    return null
-  }
-
   const info = balance?.balances[0]
   const empty = balance !== null && (balance.available === false || Number(info?.total ?? 0) <= 0)
-  const description = balance
-    ? info
-      ? empty
-        ? `${info.total} ${info.currency} · ${t('balanceEmptyHint')}`
-        : `${info.total} ${info.currency}`
-      : t('balanceEmpty')
-    : failure
-      ? classifyApiError(failure) === 'network'
-        ? t('commonNetworkErrorToast')
-        : t('balanceFailed')
-      : t('balanceLoading')
+  const description = !apiKey
+    ? t('balanceNeedsKey')
+    : balance
+      ? info
+        ? empty
+          ? `${info.total} ${info.currency} · ${t('balanceEmptyHint')}`
+          : `${info.total} ${info.currency}`
+        : t('balanceEmpty')
+      : failure
+        ? classifyApiError(failure) === 'network'
+          ? t('commonNetworkErrorToast')
+          : t('balanceFailed')
+        : t('balanceLoading')
 
   return (
     <div className={styles.cell}>
@@ -87,7 +85,7 @@ export const BalanceSetting = () => {
             variant="outlined"
             size="m"
             className={styles.cellButton}
-            disabled={busy}
+            disabled={busy || !apiKey}
             onClick={() => void load()}
           >
             {t('balanceRefresh')}
