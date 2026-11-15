@@ -78,7 +78,11 @@ export const checkArchiveFormat = async (file: File): Promise<void> => {
  * 会话读完立即暂存，只保留图片路径映射；图片全部读完后逐会话回填 MIME，不改变图片身份。
  * 写入导入暂存存储；调用方负责先清空暂存，成功后替换正式数据，失败时清理暂存。
  */
-export const importArchive = async (file: File): Promise<void> => {
+export const importArchive = async (
+  file: File,
+  onProgress?: (done: number, total: number) => void,
+  signal?: AbortSignal
+): Promise<void> => {
   if (!(await isZipFile(file))) {
     fail('backupUnrecognized')
   }
@@ -102,7 +106,18 @@ export const importArchive = async (file: File): Promise<void> => {
   }
 
   try {
-    for await (const entry of readArchive(file)) {
+    // 条目总数由目录表得出，逐条处理完再报一次；进度只用于显示，不参与校验。
+    let total = 0
+    let done = 0
+    for await (const entry of readArchive(
+      file,
+      (count) => {
+        total = count
+        onProgress?.(done, total)
+      },
+      signal
+    )) {
+      signal?.throwIfAborted()
       const { path } = entry
       const sessionId = parseSessionPath(path)
       if (!manifest) {
@@ -138,6 +153,8 @@ export const importArchive = async (file: File): Promise<void> => {
       } else {
         fail('backupIncomplete')
       }
+      done += 1
+      onProgress?.(done, total)
     }
   } catch (error) {
     throw error instanceof ArchiveError ? new BackupError('backupIncomplete') : error

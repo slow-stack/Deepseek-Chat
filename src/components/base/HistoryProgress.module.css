@@ -1,0 +1,106 @@
+.wrap {
+  position: fixed;
+  right: 0;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  left: 0;
+  z-index: 1500;
+  display: flex;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 0 16px;
+  pointer-events: none;
+}
+
+.panel {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 420px;
+  padding: 12px 14px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 12px;
+  background: var(--dsw-alias-bg-layer-2);
+  box-shadow:
+    0 0 4px 2px rgba(0, 0, 0, 0.04),
+    0 4px 16px 0 rgba(0, 0, 0, 0.1);
+  /* 外层放开点击穿透，好让进度条不挡住下面的页面；面板本身要能点取消。 */
+  pointer-events: auto;
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cancel {
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.cancel:hover {
+  color: var(--dsw-alias-label-primary);
+}
+
+.title {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--dsw-alias-label-primary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.count {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.track {
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+  height: 6px;
+  margin-top: 8px;
+  border-radius: 999px;
+  background: var(--dsw-alias-interactive-bg-hover, rgba(0, 0, 0, 0.08));
+}
+
+.bar {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--dsw-alias-brand-primary);
+  transition: width 0.2s var(--ds-ease-in-out);
+}
+
+/* 总数未知时来回走一条，表示还在读，不是卡死 */
+.unknown {
+  width: 40%;
+  animation: slide 1.2s var(--ds-ease-in-out) infinite;
+}
+
+.hint {
+  margin: 8px 0 0;
+  font-size: var(--dsw-alias-font-xs-13);
+  line-height: 18px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+@keyframes slide {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(250%);
+  }
+}

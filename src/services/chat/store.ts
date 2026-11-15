@@ -80,11 +80,20 @@ const serverTools = (search: boolean): CreateMessageRequest['tools'] => {
 /** 允许自动补标题的请求；手动重命名后取消本轮标题写入，包含主动清空标题的情况。 */
 const titleRequests = new Set<AbortController>()
 
+/** 历史导入进度；total 为 null 表示还在读目录、条目数未知。 */
+export type HistoryProgress = {
+  phase: 'reading' | 'committing'
+  done: number
+  total: number | null
+}
+
 type ChatState = {
   ready: boolean
   initError: boolean
   /** 历史导入或全部删除期间锁定交互，提交成功前仍展示原有记录。 */
   importingHistory: boolean
+  /** 导入进度；null 表示没有在导入。放在 store 里，切页面、关设置都不丢。 */
+  historyProgress: HistoryProgress | null
   /** 仅列表元数据，按 updatedAt 降序；流式消息更新不会改变此数组。 */
   sessions: SessionSummary[]
   /** 项目，按创建时间升序；成员会话的 projectId 指向这里的 id。 */
@@ -102,6 +111,7 @@ export const useChatStore = create<ChatState>(() => ({
   ready: false,
   initError: false,
   importingHistory: false,
+  historyProgress: null,
   sessions: [],
   projects: [],
   sessionCache: {},
@@ -141,6 +151,8 @@ const deletionTasks = new Set<Promise<boolean>>()
 const streamFlushes = new Map<string, () => void>()
 let accessSequence = 0
 let historyEpoch = 0
+/** 当前正在跑的导入；取消按钮通过它中断逐条目循环。 */
+let historyImportController: AbortController | null = null
 let initTask: Promise<void> | undefined
 const sessionLoads = new Map<string, { promise: Promise<void> }>()
 
@@ -418,15 +430,20 @@ const waitForIdle = (sessionId?: string) =>
 /**
  * 替换历史对话：先写入暂存，成功后原子替换旧记录；写入为空即删除全部会话与附件。
  * 期间停止生成并禁止修改会话；失败时清除暂存，保留原有记录。
+ * write 收到进度回调与取消信号，写进 store 的 historyProgress，界面切到别处也能看到。
  */
-export const replaceHistory = async (write: () => Promise<void>): Promise<number> => {
+export const replaceHistory = async (
+  write: (onProgress: (done: number, total: number) => void, signal: AbortSignal) => Promise<void>
+): Promise<number> => {
   if (get().importingHistory) {
     throw new Error('History replacement is already in progress')
   }
-  set({ importingHistory: true })
+  const controller = new AbortController()
+  historyImportController = controller
+  set({ importingHistory: true, historyProgress: { phase: 'reading', done: 0, total: null } })
   try {
-    for (const controller of Object.values(get().streaming)) {
-      controller.abort()
+    for (const running of Object.values(get().streaming)) {
+      running.abort()
     }
     // 已开始的单条删除先同步到内存，避免本次替换失败后列表残留已被删除的记录。
     await Promise.all(deletionTasks)
@@ -436,8 +453,19 @@ export const replaceHistory = async (write: () => Promise<void>): Promise<number
     await waitForIdle()
     await db.clearStaging()
     let summaries: SessionSummary[]
+    let done = 0
+    let total: number | null = null
     try {
-      await write()
+      await write(
+        (next, count) => {
+          done = next
+          total = count
+          set({ historyProgress: { phase: 'reading', done: next, total: count } })
+        },
+        controller.signal
+      )
+      // 读出条目后还要整批搬进正式表，这一步在大库里也不短。
+      set({ historyProgress: { phase: 'committing', done, total } })
       summaries = await db.commitStaging()
     } catch (error) {
       await db.clearStaging().catch(db.reportStorageError('clear unfinished history replacement'))
@@ -459,7 +487,8 @@ export const replaceHistory = async (write: () => Promise<void>): Promise<number
     })
     return summaries.length
   } finally {
-    set({ importingHistory: false })
+    historyImportController = null
+    set({ importingHistory: false, historyProgress: null })
     retrySaveSessions()
     const { activeId, ready } = get()
     // 替换失败时恢复被取消的详情读取，原有记录继续可用。
@@ -470,6 +499,16 @@ export const replaceHistory = async (write: () => Promise<void>): Promise<number
     }
   }
 }
+
+/** 中途取消导入：信号传到逐条目循环，暂存在 finally 里清掉，原有记录不受影响。 */
+export const cancelHistoryImport = () => {
+  historyImportController?.abort()
+}
+
+/** 取消导入抛的是 AbortError；调用方据此区分「用户自己取消」与「真的失败」。 */
+// DOMException 在多数浏览器里不是 Error 的子类，只能按 name 认。
+export const isHistoryImportAborted = (error: unknown) =>
+  typeof error === 'object' && error !== null && (error as { name?: unknown }).name === 'AbortError'
 
 export const newChat = () => {
   if (!get().importingHistory) {
