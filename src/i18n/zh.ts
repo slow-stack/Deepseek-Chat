@@ -130,6 +130,7 @@ export const zh = {
   balanceFailed: '余额读取失败，可稍后重试',
   balanceEmpty: '这个账户还没有余额记录',
   balanceEmptyHint: '余额见底了，充值后继续',
+  balanceNeedsKey: '先填入上面的 API Key，就能看到余额',
   balanceRefresh: '刷新',
   messageSearchSummary: '1 个网页',
   messageSearchSummaries: '{count} 个网页',
