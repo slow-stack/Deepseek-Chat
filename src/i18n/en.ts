@@ -144,6 +144,7 @@ export const en = {
   settingsLocationCity: 'Select city',
   settingsLocationRegion: 'Select country or region',
   settingDialogAsideGeneralOptionLabel: 'General',
+  settingDialogAsideMemoryOptionLabel: 'Memory',
   settingDialogAsideDataOptionLabel: 'Data',
   avatarMenuSettingsDialogThemeItemLabel: 'Theme',
   avatarMenuSettingsDialogThemeSelectLightOption: 'Light',

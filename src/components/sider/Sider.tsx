@@ -1,7 +1,7 @@
 import clsx from 'clsx'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslate } from '../../i18n/index.js'
-import { IconBrainOutline14, IconPanelLeftOutline16, IconSettingsOutline16, NewChatIcon } from '../base/icons.js'
+import { IconPanelLeftOutline16, IconSettingsOutline16, NewChatIcon } from '../base/icons.js'
 import { setSiderCollapsed } from '../../services/settings.js'
 import { groupSessions } from '../../services/chat/sessionGroups.js'
 import { newChat, removeSession, useChatStore } from '../../services/chat/store.js'
@@ -11,7 +11,6 @@ import { IconButton } from '../base/IconButton.js'
 import { Modal } from '../base/Modal.js'
 import { showToast } from '../base/toastState.js'
 import { openSettings } from '../settings/settingsDialogState.js'
-import { openMemoryPanel } from '../memory/memoryPanelState.js'
 import { closeMobileSider, useMobileSider } from './mobileSiderState.js'
 import { SessionItem } from './SessionItem.js'
 import { UpdateBanner } from './UpdateBanner.js'
@@ -103,12 +102,6 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
       </div>
       <UpdateBanner />
       <div className={styles.bottom}>
-        <button type="button" className={styles.settings} onClick={openMemoryPanel}>
-          <span className={styles.settingsIcon}>
-            <IconBrainOutline14 />
-          </span>
-          <span className={styles.settingsLabel}>{t('memoryPanelTitle')}</span>
-        </button>
         <button type="button" className={styles.settings} onClick={() => openSettings('general')}>
           <span className={styles.settingsIcon}>
             <IconSettingsOutline16 />

@@ -1,5 +1,5 @@
 declare const styles: {
-  readonly "dialog": string;
+  readonly "section": string;
   readonly "search": string;
   readonly "searchInput": string;
   readonly "list": string;

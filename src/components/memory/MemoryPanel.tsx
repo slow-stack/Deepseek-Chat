@@ -6,9 +6,6 @@ import {
   type MemoryRecord,
 } from '../../services/chat/memoryRead.js'
 import { Button } from '../base/Button.js'
-import { Modal } from '../base/Modal.js'
-import { openSettings } from '../settings/settingsDialogState.js'
-import { closeMemoryPanel, useMemoryPanel } from './memoryPanelState.js'
 import styles from './MemoryPanel.module.css'
 
 /** 一页取多少条；「加载更多」按这个步长往后翻 */
@@ -31,13 +28,8 @@ const formatDate = (value: string | null): string => {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
-/** 记忆面板：检索或按时间翻看记忆库，读的是 mneme standalone API */
-export const MemoryPanel = () => {
-  const open = useMemoryPanel((state) => state.open)
-  return open ? <MemoryPanelContent /> : null
-}
-
-const MemoryPanelContent = () => {
+/** 设置弹窗的「记忆」分组：检索或按时间翻看记忆库，读的是 mneme 记忆服务 */
+export const MemoryPanelContent = () => {
   const t = useTranslate()
   const [draft, setDraft] = useState('')
   const [query, setQuery] = useState('')
@@ -95,16 +87,6 @@ const MemoryPanelContent = () => {
       <div className={styles.notice}>
         <div className={styles.noticeTitle}>{t('memoryPanelMissing')}</div>
         <div className={styles.noticeBody}>{t('memoryPanelMissingHint')}</div>
-        <Button
-          size="m"
-          variant="outlined"
-          onClick={() => {
-            closeMemoryPanel()
-            openSettings('general')
-          }}
-        >
-          {t('memoryPanelOpenSettings')}
-        </Button>
       </div>
     ) : state.kind === 'failed' ? (
       <div className={styles.notice}>
@@ -117,7 +99,7 @@ const MemoryPanelContent = () => {
   const total = state.kind === 'ready' ? state.total : null
 
   return (
-    <Modal title={t('memoryPanelTitle')} closable className={styles.dialog} onClose={closeMemoryPanel}>
+    <div className={styles.section}>
       <div className={styles.search}>
         <input
           className={styles.searchInput}
@@ -167,6 +149,6 @@ const MemoryPanelContent = () => {
           </Button>
         ) : null}
       </div>
-    </Modal>
+    </div>
   )
 }
