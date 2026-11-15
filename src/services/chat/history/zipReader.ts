@@ -1,8 +1,9 @@
 import { Inflate } from 'fflate'
 
-const READ_CHUNK_BYTES = 256 * 1024
+const READ_CHUNK_BYTES = 512 * 1024
 // 控制每轮同步解压的工作量；输出交给调用方保存后才继续读取。
-const INFLATE_CHUNK_BYTES = 8 * 1024
+// 块太小会让每次 yield 的 Promise 开销压过大文件的实际解压时间。
+const INFLATE_CHUNK_BYTES = 64 * 1024
 
 /** ZIP 结构损坏或使用了不支持的特性 */
 export class ArchiveError extends Error {
@@ -24,13 +25,57 @@ export const isZipFile = async (file: File) => {
 
 const viewOf = (bytes: Uint8Array) => new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
 
-const crcTable = Uint32Array.from({ length: 256 }, (_, value) => {
-  let crc = value
-  for (let bit = 0; bit < 8; bit++) {
-    crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0)
+/**
+ * slice-by-8 的 CRC-32 查找表：8 张表依次叠一代，一次吞 8 字节。
+ * 导入大图片时逐字节计算是主热点，这里比单表快近一倍。
+ */
+const crcTables = (() => {
+  const tables = new Uint32Array(8 * 256)
+  for (let value = 0; value < 256; value++) {
+    let crc = value
+    for (let bit = 0; bit < 8; bit++) {
+      crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0)
+    }
+    tables[value] = crc >>> 0
+  }
+  for (let slice = 1; slice < 8; slice++) {
+    const base = slice * 256
+    for (let value = 0; value < 256; value++) {
+      const previous = tables[base - 256 + value]
+      tables[base + value] = (tables[previous & 0xff] ^ (previous >>> 8)) >>> 0
+    }
+  }
+  return tables
+})()
+
+/** 累进 CRC-32（不取反）；逐 8 字节走多表，尾部退回逐字节。 */
+const updateCrc = (start: number, chunk: Uint8Array): number => {
+  let crc = start
+  let index = 0
+  const end = chunk.length
+  while (end - index >= 8) {
+    const word =
+      (crc ^
+        (chunk[index] | (chunk[index + 1] << 8) | (chunk[index + 2] << 16) | (chunk[index + 3] << 24))) >>>
+      0
+    crc =
+      (crcTables[7 * 256 + (word & 0xff)] ^
+        crcTables[6 * 256 + ((word >>> 8) & 0xff)] ^
+        crcTables[5 * 256 + ((word >>> 16) & 0xff)] ^
+        crcTables[4 * 256 + (word >>> 24)] ^
+        crcTables[3 * 256 + chunk[index + 4]] ^
+        crcTables[2 * 256 + chunk[index + 5]] ^
+        crcTables[1 * 256 + chunk[index + 6]] ^
+        crcTables[chunk[index + 7]]) >>>
+      0
+    index += 8
+  }
+  while (index < end) {
+    crc = (crc >>> 8) ^ crcTables[(crc ^ chunk[index]) & 0xff]
+    index += 1
   }
   return crc >>> 0
-})
+}
 
 const readBytes = async (file: File, start: number, length: number) => {
   if (start < 0 || length < 0 || start + length > file.size) {
@@ -256,9 +301,8 @@ export async function* readArchive(file: File): AsyncGenerator<ArchiveEntry> {
         if (written > entry.size) {
           invalid()
         }
-        for (const byte of chunk) {
-          crc = (crc >>> 8) ^ crcTable[(crc ^ byte) & 0xff]
-        }
+        // slice-by-8：大归档里逐字节 CRC 是主热点。
+        crc = updateCrc(crc, chunk)
         if (chunk.length) {
           pending.push(chunk)
         }
@@ -300,11 +344,12 @@ export async function* readArchive(file: File): AsyncGenerator<ArchiveEntry> {
 
 /** 读出整个条目：会话 JSON 需要完整解析，图片需要识别类型后整张保存。 */
 export const readEntry = async (entry: ArchiveEntry): Promise<Blob> => {
-  const parts: Blob[] = []
+  const chunks: BlobPart[] = []
   for await (const chunk of entry.stream) {
-    parts.push(new Blob([chunk as Uint8Array<ArrayBuffer>]))
+    chunks.push(chunk as Uint8Array<ArrayBuffer>)
   }
-  return new Blob(parts)
+  // 整条目只在最后拼一次 Blob：逐块建 Blob 会让大图片产生上千个 Blob 对象。
+  return new Blob(chunks)
 }
 
 /** 不需要的条目也要读完，以校验大小与 CRC。 */
