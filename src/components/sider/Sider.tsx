@@ -14,6 +14,7 @@ import { openSettings } from '../settings/settingsDialogState.js'
 import { useEnabledPlugins } from '../../plugins/registry.js'
 import { openChatPage, openPage, useAppPage } from '../../app/pageState.js'
 import { closeMobileSider, useMobileSider } from './mobileSiderState.js'
+import { ProjectList } from './ProjectList.js'
 import { SessionItem } from './SessionItem.js'
 import { UpdateBanner } from './UpdateBanner.js'
 import { runUpdateCheck } from './updateBannerState.js'
@@ -25,7 +26,12 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
   const sessions = useChatStore((state) => state.sessions)
   const activeId = useChatStore((state) => state.activeId)
   const [now, setNow] = useState(Date.now)
-  const groups = useMemo(() => groupSessions(sessions, now, t), [sessions, now, t])
+  // 归进项目的会话只在项目下显示，不再混进按时间分的分组
+  const looseSessions = useMemo(
+    () => sessions.filter((session) => !session.projectId),
+    [sessions]
+  )
+  const groups = useMemo(() => groupSessions(looseSessions, now, t), [looseSessions, now, t])
   const [deleting, setDeleting] = useState<SessionSummary | null>(null)
   const [deletePending, setDeletePending] = useState(false)
   // 启用的插件才在侧栏底部各占一行入口
@@ -91,6 +97,7 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
       </button>
       <div className={styles.listWrap}>
         <div className={styles.list}>
+          <ProjectList activeId={activeId} onDelete={setDeleting} />
           {groups.map((group) => (
             <div key={group.key} className={styles.section}>
               <div className={styles.sectionHeader}>{group.label}</div>

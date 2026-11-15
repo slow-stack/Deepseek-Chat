@@ -37,6 +37,7 @@ import {
   type Message,
   type Session,
   type SessionCompaction,
+  type SessionProject,
   type SessionSummary,
   type UserMessage,
 } from './types.js'
@@ -75,6 +76,8 @@ type ChatState = {
   importingHistory: boolean
   /** 仅列表元数据，按 updatedAt 降序；流式消息更新不会改变此数组。 */
   sessions: SessionSummary[]
+  /** 项目，按创建时间升序；成员会话的 projectId 指向这里的 id。 */
+  projects: SessionProject[]
   sessionCache: Record<string, Session>
   sessionLoadErrors: Record<string, boolean>
   sessionSaveErrors: Record<string, boolean>
@@ -89,6 +92,7 @@ export const useChatStore = create<ChatState>(() => ({
   initError: false,
   importingHistory: false,
   sessions: [],
+  projects: [],
   sessionCache: {},
   sessionLoadErrors: {},
   sessionSaveErrors: {},
@@ -112,7 +116,10 @@ const getStreamController = (id: string) => {
 }
 
 const sameSummary = (a: SessionSummary, b: SessionSummary) =>
-  a.title === b.title && a.createdAt === b.createdAt && a.updatedAt === b.updatedAt
+  a.title === b.title &&
+  a.createdAt === b.createdAt &&
+  a.updatedAt === b.updatedAt &&
+  (a.projectId ?? null) === (b.projectId ?? null)
 
 const sessionAccess = new Map<string, number>()
 const unsavedSessions = new Set<string>()
@@ -308,9 +315,12 @@ export const initChat = (): Promise<void> => {
   set({ initError: false })
   initTask = (async () => {
     try {
-      const summaries = await db.loadSessionSummaries()
+      const [summaries, projects] = await Promise.all([
+        db.loadSessionSummaries(),
+        db.loadProjects(),
+      ])
       if (epoch === historyEpoch) {
-        set({ ready: true, sessions: sortSessions(summaries) })
+        set({ ready: true, sessions: sortSessions(summaries), projects })
       }
     } catch (error) {
       if (epoch === historyEpoch) {
@@ -430,6 +440,7 @@ export const replaceHistory = async (write: () => Promise<void>): Promise<number
       ready: true,
       initError: false,
       sessions: sortSessions(summaries),
+      projects: [],
       sessionCache: {},
       sessionLoadErrors: {},
       sessionSaveErrors: {},
@@ -504,6 +515,78 @@ export const setMemoryEnabled = (id: string, memoryEnabled: boolean) => {
       ),
     }))
     void db.setMemoryEnabled(id, memoryEnabled).catch(db.reportStorageError('set memory enabled'))
+  }
+}
+
+/**
+ * 新建项目。名字只做首尾去空白，重名允许——项目按 id 区分，不按名字；
+ * 空名字直接不建，返回 null 让界面保持原样。
+ */
+export const createProject = (name: string): SessionProject | null => {
+  const trimmed = name.trim()
+  if (!trimmed || get().importingHistory) {
+    return null
+  }
+  const project: SessionProject = { id: createId(), name: trimmed, createdAt: Date.now() }
+  set((state) => ({ projects: [...state.projects, project] }))
+  void db.saveProject(project).catch(db.reportStorageError('create project'))
+  return project
+}
+
+export const renameProject = (id: string, name: string) => {
+  const trimmed = name.trim()
+  const project = get().projects.find((item) => item.id === id)
+  if (!trimmed || !project) {
+    return
+  }
+  const next: SessionProject = { ...project, name: trimmed }
+  set((state) => ({
+    projects: state.projects.map((item) => (item.id === id ? next : item)),
+  }))
+  void db.saveProject(next).catch(db.reportStorageError('rename project'))
+}
+
+/** 删项目只解散归类：成员会话回到未分组的列表，会话本身一条不删。 */
+export const removeProject = (id: string) => {
+  if (get().importingHistory) {
+    return
+  }
+  set((state) => ({
+    projects: state.projects.filter((item) => item.id !== id),
+    sessions: state.sessions.map((session) =>
+      session.projectId === id ? { ...session, projectId: null } : session
+    ),
+  }))
+  // 打开中的会话也要同步摘掉，否则下次保存会把旧 projectId 写回去。
+  for (const session of Object.values(get().sessionCache)) {
+    if (session.projectId === id) {
+      updateSession(session.id, (item) => ({ ...item, projectId: null }))
+      persist(session.id)
+    }
+  }
+  void db.deleteProject(id).catch(db.reportStorageError('remove project'))
+}
+
+/** 把会话放进项目（projectId 为 null 表示移回未分组的列表）。 */
+export const moveSessionToProject = (id: string, projectId: string | null) => {
+  if (get().importingHistory || deletingSessions.has(id)) {
+    return
+  }
+  const known =
+    projectId === null || get().projects.some((project) => project.id === projectId)
+  if (!known) {
+    return
+  }
+  if (getSession(id)) {
+    updateSession(id, (session) => ({ ...session, projectId }))
+    persist(id)
+  } else {
+    set((state) => ({
+      sessions: state.sessions.map((session) =>
+        session.id === id ? { ...session, projectId } : session
+      ),
+    }))
+    void db.setSessionProject(id, projectId).catch(db.reportStorageError('move session to project'))
   }
 }
 
