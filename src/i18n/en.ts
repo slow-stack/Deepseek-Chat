@@ -177,6 +177,11 @@ export const en = {
   endpointSummaryTitle: 'Context summary',
   endpointSummaryDescription:
     'Summarises compacted context. Optional: without it compaction falls back to a local summary.',
+  endpointSearchTitle: 'Web search',
+  endpointSearchDescription:
+    'When set, the app calls the search API itself, so it can point elsewhere. Leave blank to let the service search inside the conversation.',
+  endpointSearchDefault:
+    'Left blank, searching happens on the service side and adds no client request.',
   endpointTtsTitle: 'Speech synthesis',
   endpointTtsDescription: 'Reading replies aloud',
   endpointAsrTitle: 'Speech recognition',

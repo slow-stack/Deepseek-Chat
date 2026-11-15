@@ -1,8 +1,15 @@
 import { create } from 'zustand'
 import { createId } from '../../utils/id.js'
 import { ApiError, streamMessage } from '../api/client.js'
-import { modelFor } from '../api/endpoints.js'
-import type { ChatModel, CreateMessageRequest } from '../api/types.js'
+import { modelFor, searchEndpointConfigured } from '../api/endpoints.js'
+import { describeSearchFailure, formatSearchResults, searchWeb } from '../api/search.js'
+import type {
+  ChatModel,
+  CreateMessageRequest,
+  MessageParam,
+  ServerToolUseBlock,
+  WebSearchToolResultBlock,
+} from '../api/types.js'
 import { extractFileIds, getFileErrorCode, isRetryableApiError } from '../api/errors.js'
 import { cancelUpload, describeUploadError, uploadAttachment, useUploads } from '../attachments.js'
 import { useSettings } from '../settings.js'
@@ -36,6 +43,7 @@ import {
   type AssistantMessage,
   type FileAttachment,
   type Message,
+  type ReplyBlock,
   type Session,
   type SessionCompaction,
   type SessionProject,
@@ -1135,6 +1143,63 @@ export const compactNow = async (sessionId: string): Promise<boolean> => {
 export const getSessionContextTokens = (session: Session): number =>
   getEffectiveContextTokens(getVisibleMessages(session), session.compaction)
 
+/** 客户端直连搜索的结果并进本轮提问前，先说明这段文字是从哪来的 */
+const SEARCH_CONTEXT_HEADER = '【以下是我自己联网搜索到的结果，供你参考】'
+/** 搜过但一条没命中时也要说一声，否则模型会当成没联网 */
+const EMPTY_SEARCH_NOTICE = '（联网搜索已执行，没有找到可用结果）'
+
+/**
+ * 客户端直连搜索：先拿到结果，再合成一对工具块塞进回复供界面展示。
+ *
+ * 只有设置里给「联网搜索」配了地址或密钥才走这里；否则仍由服务端在对话里执行。
+ * 搜索失败不打断本轮对话：不留下半截工具块（界面会显示成失败），只把原因交给模型说。
+ */
+const runClientSearch = async (
+  question: string,
+  apiKey: string,
+  signal: AbortSignal
+): Promise<{ blocks: ReplyBlock[]; context: string }> => {
+  const toolUseId = `srvtoolu_s_${createId()}`
+  try {
+    const results = await searchWeb({ apiKey, query: question, signal })
+    // 没结果也告诉模型搜过了：否则它会以为没联网，把答案说成「我没有实时信息」。
+    if (results.length === 0) {
+      return { blocks: [], context: EMPTY_SEARCH_NOTICE }
+    }
+    const toolUse: ServerToolUseBlock = {
+      type: 'server_tool_use',
+      id: toolUseId,
+      name: 'deepseek_web_search',
+      input: { action: 'search', queries: [question] },
+      caller: { type: 'direct' },
+      kind: 'search',
+    }
+    const result: WebSearchToolResultBlock = {
+      type: 'web_search_tool_result',
+      tool_use_id: toolUseId,
+      content: results,
+      kind: 'search',
+    }
+    return { blocks: [toolUse, result], context: formatSearchResults(results) }
+  } catch (error) {
+    return { blocks: [], context: `（联网搜索没有成功：${describeSearchFailure(error)}）` }
+  }
+}
+
+/** 把搜索结果接到最后一条用户消息上，保持一问一答的轮次结构 */
+const appendSearchContext = (messages: MessageParam[], context: string) => {
+  const index = messages.findLastIndex((message) => message.role === 'user')
+  const message = messages[index]
+  if (!message || message.role !== 'user' || !context) {
+    return
+  }
+  const text = `${SEARCH_CONTEXT_HEADER}\n${context}`
+  message.content =
+    typeof message.content === 'string'
+      ? `${message.content}\n\n${text}`
+      : [...message.content, { type: 'text' as const, text }]
+}
+
 /**
  * 请求并消费流：先补齐附件的 serverId，再发请求；流式增量按动画帧刷新内存，完成、失败或停止后落盘。
  * 补传失败时回复记为 upload 错误，可重试。
@@ -1156,6 +1221,9 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
   streamFlushes.set(sessionId, flush)
 
   try {
+    /** 客户端直连搜索只做一次：重发时沿用已有结果，避免重复计费与重复的工具块 */
+    let searchContext = ''
+    let searched = false
     for (let attempt = 0; ; attempt += 1) {
       /** 附件补齐前出错属于上传失败，请求还没有发出 */
       let preparing = true
@@ -1180,6 +1248,28 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
           latestReminder,
           compaction
         )
+        // 联网搜索：配了自己的接口就由客户端先搜，结果作为一对工具块回填给界面，
+        // 同时把正文拼进本轮提问；没配才声明服务端工具，交给服务端在对话里执行。
+        // 两条路互斥，否则同一轮会搜两遍、钱花两遍。
+        const ownSearch = (initial.search ?? false) && searchEndpointConfigured()
+        // 续写（有前缀）不重搜：上一轮的结果还在上下文里，重搜会叠出重复的工具块。
+        const clientSearch = ownSearch && !prepared.prefix
+        if (clientSearch && !searched) {
+          searched = true
+          const found = await runClientSearch(
+            prepared.question.content,
+            useSettings.getState().apiKey ?? '',
+            controller.signal
+          )
+          if (found.blocks.length > 0) {
+            reply = { ...reply, blocks: [...reply.blocks, ...found.blocks] }
+            updateReply(sessionId, reply)
+          }
+          searchContext = found.context
+        }
+        if (clientSearch) {
+          appendSearchContext(messages, searchContext)
+        }
         const events = streamMessage(
           useSettings.getState().apiKey ?? '',
           {
@@ -1188,7 +1278,7 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
             messages,
             thinking: { type: initial.thinking ? 'enabled' : 'disabled' },
             safety_check: SAFETY_CHECK,
-            tools: serverTools(initial.search ?? false),
+            tools: serverTools((initial.search ?? false) && !ownSearch),
             ...(titleRequests.has(controller) ? { title: { enabled: true } } : {}),
           },
           controller.signal
