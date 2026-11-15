@@ -43,7 +43,8 @@ const toRecord = (stored: StoredMemory): MemoryRecord => {
 }
 
 export type LocalMemoryInput = {
-  /** 唯一键：同一轮对话重复保存只覆盖，不会堆重复 */
+  /** 主键；不给就用 title。整理出来的条目要覆盖同一条会话的旧结果，所以单独给 id */
+  id?: string
   title: string
   content: string
   occurredAt?: string | null
@@ -60,13 +61,14 @@ const timeOf = (value: string | null | undefined): number => {
   return Number.isFinite(time) ? time : Date.now()
 }
 
-/** 写一条；同一个 title 覆盖写。 */
+/** 写一条；同一个 id（默认取 title）覆盖写。 */
 export const saveLocalMemory = async (input: LocalMemoryInput): Promise<void> => {
   const db = await getDB()
-  const existing = await db.get(STORE, input.title)
+  const id = input.id ?? input.title
+  const existing = await db.get(STORE, id)
   const now = new Date().toISOString()
   const record: StoredMemory = {
-    id: input.title,
+    id,
     type: input.type ?? 'conversation',
     title: input.title,
     content: input.content,

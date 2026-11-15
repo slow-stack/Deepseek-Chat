@@ -29,7 +29,14 @@ const formatDate = (value: string | null): string => {
  * 记忆浏览：检索或按时间翻看记忆库，读的是 mneme 记忆服务。
  * 记忆页整页用它（variant='page'），设置里的小窗用它（variant='panel'）。
  */
-export const MemoryBrowser = ({ variant = 'panel' }: { variant?: 'panel' | 'page' }) => {
+export const MemoryBrowser = ({
+  variant = 'panel',
+  refreshKey = 0,
+}: {
+  variant?: 'panel' | 'page'
+  /** 外部写入记忆后改这个数，列表会重新读一遍 */
+  refreshKey?: number
+}) => {
   const t = useTranslate()
   const [draft, setDraft] = useState('')
   const [query, setQuery] = useState('')
@@ -60,7 +67,7 @@ export const MemoryBrowser = ({ variant = 'panel' }: { variant?: 'panel' | 'page
         }
         setState({ kind: 'failed' })
       })
-  }, [query])
+  }, [query, refreshKey])
 
   const loadMore = useCallback(async () => {
     if (state.kind !== 'ready' || moreBusy) {
