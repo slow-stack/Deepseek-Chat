@@ -1,22 +1,42 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslate } from '../../i18n/index.js'
 import { loadMemories } from '../../services/chat/memoryRead.js'
+import { countLocalMemories } from '../../services/chat/memoryStore.js'
 import { setMemoryServiceToken, setMemoryServiceUrl, useSettings } from '../../services/settings.js'
 import { Button } from '../base/Button.js'
 import { showToast } from '../base/toastState.js'
 import styles from './MemoryServiceSetting.module.css'
 
 /**
- * 记忆服务的连接配置：地址 + token。
- * 地址留空时走宿主代转（只在 DSH 面板里有效）；填了就是直连，APK 只能直连。
+ * 记忆的存放位置。默认就是本机——装上就能用，不需要填任何东西。
+ * 下面是可选的高级项：想连自己电脑上那台服务时才填地址，填了才改走远端。
  */
 export const MemoryServiceSetting = () => {
   const t = useTranslate()
   const url = useSettings((state) => state.memoryServiceUrl)
   const token = useSettings((state) => state.memoryServiceToken)
   const [testing, setTesting] = useState(false)
+  const [localCount, setLocalCount] = useState<number | null>(null)
 
-  // 测一次读接口：能读到就算通，读不到把原因说清楚
+  // 本地条数用来给「本机」这条一个实证：不是空口说存在这里
+  useEffect(() => {
+    let alive = true
+    void countLocalMemories()
+      .then((count) => {
+        if (alive) {
+          setLocalCount(count)
+        }
+      })
+      .catch(() => {
+        if (alive) {
+          setLocalCount(null)
+        }
+      })
+    return () => {
+      alive = false
+    }
+  }, [])
+
   const test = async () => {
     setTesting(true)
     try {
@@ -31,8 +51,16 @@ export const MemoryServiceSetting = () => {
 
   return (
     <div className={styles.block}>
+      <div className={styles.field}>
+        <span className={styles.label}>{t('memoryServiceTitle')}</span>
+        <p className={styles.hint}>
+          <strong>{t('memoryServiceLocal')}</strong>
+          {localCount === null ? '' : ` · ${t('memoryPanelTotal', { count: localCount })}`}
+        </p>
+        <p className={styles.hint}>{t('memoryServiceLocalHint')}</p>
+      </div>
       <label className={styles.field}>
-        <span className={styles.label}>{t('memoryServiceUrlLabel')}</span>
+        <span className={styles.label}>{t('memoryServiceRemote')}</span>
         <input
           className={styles.input}
           defaultValue={url ?? ''}

@@ -1,4 +1,5 @@
 import { useSettings } from '../settings.js'
+import { saveLocalMemory } from './memoryStore.js'
 import type { AssistantMessage, Session, UserMessage } from './types.js'
 
 /**
@@ -31,11 +32,10 @@ export const canReadMemory = (session: Pick<Session, 'memoryEnabled'> | undefine
   isMemoryPluginOn() && isMemoryEnabled(session)
 
 /**
- * 入库路由。同源，由插件 `integration/dsh-chat-demo/index.js` 代转到 mneme 的
- * standalone API：token 只在插件进程里读，页面拿不到，也不该拿到。
- * 服务不在（开发服务器、将来脱离 DSH 的 APK）时这里会 404 或网络失败，一律静默。
+ * 入库路由：默认进本机那个记忆库（装上就有、离线可用、不经过任何服务），
+ * 只有在高级设置里填了记忆服务地址时才改走远端。
+ * 任何失败都静默——记忆是旁路，不能把已经答完的回复变成错误。
  */
-const MEMORY_ENDPOINT = '/api/dsh-chat-demo/memory'
 
 /** 标题必须是纯文本以外的「唯一键」，同时不能撞上写入准入的密钥 / PII 形状判据。 */
 const memoryTitleOf = (session: Pick<Session, 'id'>, reply: Pick<AssistantMessage, 'id'>) =>
@@ -75,12 +75,26 @@ export const saveTurnToMemory = async (
     content: memoryContentOf(session as Session, question, replyText),
     occurred_at: new Date(reply.createdAt || Date.now()).toISOString(),
   }
-  // 填了记忆服务地址就直连（APK / 浏览器都行），没填走宿主代转（只在 DSH 面板里有效）。
   const { memoryServiceUrl, memoryServiceToken } = useSettings.getState()
-  const base = memoryServiceUrl ? memoryServiceUrl.replace(/\/+$/, '') : ''
-  const endpoint = base ? `${base}/memories` : MEMORY_ENDPOINT
+  if (!memoryServiceUrl) {
+    // 默认这条路：直接写进本机记忆库，不联网、不需要任何配置
+    try {
+      await saveLocalMemory({
+        title: body.title,
+        content: body.content,
+        occurredAt: body.occurred_at,
+        type: 'conversation',
+        tags: [],
+      })
+      return { ok: true, action: 'saved' }
+    } catch {
+      return { ok: false, reason: 'unreachable' }
+    }
+  }
+  const base = memoryServiceUrl.replace(/\/+$/, '')
+  const endpoint = `${base}/memories`
   const headers: Record<string, string> = { 'content-type': 'application/json' }
-  if (base && memoryServiceToken) {
+  if (memoryServiceToken) {
     headers.authorization = `Bearer ${memoryServiceToken}`
   }
   const controller = new AbortController()

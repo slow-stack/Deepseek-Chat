@@ -121,3 +121,24 @@
   font-size: var(--dsw-alias-font-xs-13);
   line-height: 20px;
 }
+
+.probe {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.probeOk,
+.probeFailed {
+  font-size: var(--dsw-alias-font-xs-13);
+  line-height: 20px;
+}
+
+.probeOk {
+  color: var(--dsw-alias-label-secondary);
+}
+
+.probeFailed {
+  color: var(--dsw-alias-label-error, var(--dsw-alias-label-secondary));
+}

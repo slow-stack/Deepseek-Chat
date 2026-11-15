@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { API_ORIGIN } from '../../services/api/client.js'
+import { probeEndpoint } from '../../services/api/probe.js'
+import { classifyApiError } from '../../services/api/errors.js'
 import { CAPABILITIES_WITH_MODEL, type ApiCapability } from '../../services/api/capability.js'
 import {
   setEndpointOverride,
@@ -20,6 +22,17 @@ const LABELS: Record<ApiCapability, { title: TranslationKey; description: Transl
   tts: { title: 'endpointTtsTitle', description: 'endpointTtsDescription' },
   asr: { title: 'endpointAsrTitle', description: 'endpointAsrDescription' },
 }
+
+/** 探测失败按原因给不同人话：改地址、换密钥、充值，处理方式完全不同 */
+const PROBE_MESSAGES = {
+  unauthorized: 'endpointTestUnauthorized',
+  insufficientBalance: 'endpointTestBalance',
+  rateLimited: 'endpointTestBusy',
+  serverBusy: 'endpointTestBusy',
+  network: 'endpointTestNetwork',
+  tooLarge: 'endpointTestFailed',
+  other: 'endpointTestFailed',
+} as const satisfies Record<string, TranslationKey>
 
 /** 未配置时实际生效的默认值，写出来才看得出来「留空」意味着什么 */
 const describeDefault = (capability: ApiCapability, t: ReturnType<typeof useTranslate>) => {
@@ -57,9 +70,28 @@ const EndpointRow = ({
   t: ReturnType<typeof useTranslate>
 }) => {
   const override = useSettings((state) => state.endpoints[capability])
+  const apiKey = useSettings((state) => state.apiKey)
   const [collapsed, setCollapsed] = useState(true)
+  const [probe, setProbe] = useState<'idle' | 'running' | 'ok' | { failed: string }>('idle')
   const label = LABELS[capability]
   const configured = Boolean(override.baseUrl || override.apiKey || override.model)
+
+  // 用这条能力实际生效的密钥（自己的优先，没有就用全局）；一个都没配就直说，不发空请求
+  const effectiveKey = override.apiKey || apiKey || ''
+
+  const runProbe = async () => {
+    if (!effectiveKey) {
+      setProbe({ failed: t('endpointTestNoKey') })
+      return
+    }
+    setProbe('running')
+    try {
+      await probeEndpoint(capability, effectiveKey)
+      setProbe('ok')
+    } catch (error) {
+      setProbe({ failed: t(PROBE_MESSAGES[classifyApiError(error)]) })
+    }
+  }
 
   return (
     <div className={styles.row}>
@@ -122,6 +154,27 @@ const EndpointRow = ({
               </Button>
             </div>
           ) : null}
+          <div className={styles.probe}>
+            <Button
+              variant="outlined"
+              size="s"
+              disabled={probe === 'running'}
+              onClick={() => void runProbe()}
+            >
+              {t(probe === 'running' ? 'endpointTestRunning' : 'endpointTest')}
+            </Button>
+            <span
+              className={probe === 'ok' ? styles.probeOk : styles.probeFailed}
+              role="status"
+              aria-live="polite"
+            >
+              {probe === 'ok'
+                ? t('endpointTestOk')
+                : probe === 'idle' || probe === 'running'
+                  ? ''
+                  : probe.failed}
+            </span>
+          </div>
         </div>
       )}
     </div>
