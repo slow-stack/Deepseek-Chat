@@ -13,6 +13,10 @@ export const en = {
   sessionSaveFailed:
     'Chats or attachments have not been saved locally. Retry before closing this page.',
   sessionDeleteFailed: 'Unable to delete this chat. Please try again.',
+  siderSearchPlaceholder: 'Search chats',
+  siderSearchClear: 'Clear search',
+  siderSearchResults: 'Results',
+  siderSearchEmpty: 'No chat matches that',
   settings: 'Settings',
   appName: 'DeepseekChat',
   backToHost: 'Back to DSH chat',

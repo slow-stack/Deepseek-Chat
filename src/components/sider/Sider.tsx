@@ -1,7 +1,13 @@
 import clsx from 'clsx'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslate } from '../../i18n/index.js'
-import { IconPanelLeftOutline16, IconSettingsOutline16, NewChatIcon } from '../base/icons.js'
+import {
+  IconCloseOutline16,
+  IconPanelLeftOutline16,
+  IconSearchOutline16,
+  IconSettingsOutline16,
+  NewChatIcon,
+} from '../base/icons.js'
 import { setSiderCollapsed } from '../../services/settings.js'
 import { groupSessions } from '../../services/chat/sessionGroups.js'
 import { newChat, removeSession, useChatStore } from '../../services/chat/store.js'
@@ -33,6 +39,16 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
   const groups = useMemo(() => groupSessions(looseSessions, now, t), [looseSessions, now, t])
   const [deleting, setDeleting] = useState<SessionSummary | null>(null)
   const [deletePending, setDeletePending] = useState(false)
+  // 侧栏搜索：标题子串匹配，命中后直接平铺结果，不再按项目与时间分组
+  const [query, setQuery] = useState('')
+  const search = query.trim().toLowerCase()
+  const matches = useMemo(
+    () =>
+      search
+        ? sessions.filter((session) => (session.title || t('untitledChat')).toLowerCase().includes(search))
+        : [],
+    [sessions, search, t]
+  )
   // 启用的插件才在侧栏底部各占一行入口
   const plugins = useEnabledPlugins()
   const page = useAppPage((state) => state.page)
@@ -91,22 +107,64 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
         </span>
         {t('newChat')}
       </button>
+      <div className={styles.search}>
+        <span className={styles.searchIcon}>
+          <IconSearchOutline16 />
+        </span>
+        <input
+          className={styles.searchInput}
+          value={query}
+          placeholder={t('siderSearchPlaceholder')}
+          aria-label={t('siderSearchPlaceholder')}
+          onChange={(event) => setQuery(event.target.value)}
+        />
+        {query ? (
+          <button
+            type="button"
+            className={styles.searchClear}
+            aria-label={t('siderSearchClear')}
+            onClick={() => setQuery('')}
+          >
+            <IconCloseOutline16 />
+          </button>
+        ) : null}
+      </div>
       <div className={styles.listWrap}>
         <div className={styles.list}>
-          <ProjectList activeId={activeId} onDelete={setDeleting} />
-          {groups.map((group) => (
-            <div key={group.key} className={styles.section}>
-              <div className={styles.sectionHeader}>{group.label}</div>
-              {group.sessions.map((session) => (
-                <SessionItem
-                  key={session.id}
-                  session={session}
-                  active={session.id === activeId}
-                  onDelete={() => setDeleting(session)}
-                />
+          {search ? (
+            matches.length ? (
+              <div className={styles.section}>
+                <div className={styles.sectionHeader}>{t('siderSearchResults')}</div>
+                {matches.map((session) => (
+                  <SessionItem
+                    key={session.id}
+                    session={session}
+                    active={session.id === activeId}
+                    onDelete={() => setDeleting(session)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className={styles.searchEmpty}>{t('siderSearchEmpty')}</div>
+            )
+          ) : (
+            <>
+              <ProjectList activeId={activeId} onDelete={setDeleting} />
+              {groups.map((group) => (
+                <div key={group.key} className={styles.section}>
+                  <div className={styles.sectionHeader}>{group.label}</div>
+                  {group.sessions.map((session) => (
+                    <SessionItem
+                      key={session.id}
+                      session={session}
+                      active={session.id === activeId}
+                      onDelete={() => setDeleting(session)}
+                    />
+                  ))}
+                </div>
               ))}
-            </div>
-          ))}
+            </>
+          )}
         </div>
       </div>
       <UpdateBanner />
