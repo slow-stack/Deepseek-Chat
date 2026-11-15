@@ -15,6 +15,8 @@ import {
   exportHistory,
   importHistory,
 } from '../../services/chat/backup.js'
+import { currentVersion } from '../../services/update.js'
+import { runUpdateCheck, useUpdateBanner } from '../sider/updateBannerState.js'
 import { useIsMobile } from '../../app/viewport.js'
 import { useChatStore } from '../../services/chat/store.js'
 import { regionCodes, getRegionName, provinces } from '../../services/location.js'
@@ -103,6 +105,7 @@ const SettingsContent = () => {
               <LocaleSetting />
               <TtsVoiceSetting />
               <LocationSetting />
+              <UpdateSetting />
             </>
           ) : (
             <>
@@ -289,6 +292,42 @@ const LocaleSetting = () => {
           ]}
           onChange={setLocale}
         />
+      }
+    />
+  )
+}
+
+/** 版本检查：手动触发一次，把结论写在设置项下面；有新版本时侧栏也会出现提示条 */
+const UpdateSetting = () => {
+  const t = useTranslate()
+  const checking = useUpdateBanner((state) => state.checking)
+  const update = useUpdateBanner((state) => state.update)
+  const lastResult = useUpdateBanner((state) => state.lastResult)
+  const version = currentVersion()
+  const status: Status = checking
+    ? { key: 'updateChecking' }
+    : update
+      ? { key: 'updateAvailable' }
+      : lastResult === 'unreachable'
+        ? { key: 'updateUnreachable', error: true }
+        : lastResult === 'latest'
+          ? { key: 'updateLatest' }
+          : null
+  return (
+    <SettingCell
+      label={t('updateCheck')}
+      description={t('updateCurrentVersion', { version })}
+      status={status}
+      action={
+        <Button
+          variant="outlined"
+          size="m"
+          className={styles.cellButton}
+          disabled={checking}
+          onClick={() => void runUpdateCheck({ force: true })}
+        >
+          {t('updateCheck')}
+        </Button>
       }
     />
   )

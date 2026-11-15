@@ -211,4 +211,13 @@ export const en = {
   latestReminderLanguage: 'English',
   settingsLocaleZhCN: 'Simplified Chinese',
   settingsLocaleEnUS: 'English',
+  updateAvailableTitle: 'New version',
+  updateAvailable: 'An update is available',
+  updateDownload: 'Download',
+  updateDismiss: 'Dismiss',
+  updateCheck: 'Check for updates',
+  updateChecking: 'Checking…',
+  updateLatest: 'You are on the latest version',
+  updateUnreachable: "Couldn't reach the update source",
+  updateCurrentVersion: 'Current version {version}',
 } satisfies Record<keyof typeof zh, string>

@@ -200,4 +200,13 @@ export const zh = {
   latestReminderLanguage: '中文',
   settingsLocaleZhCN: '简体中文',
   settingsLocaleEnUS: 'English',
+  updateAvailableTitle: '有新版本',
+  updateAvailable: '有新版本可用',
+  updateDownload: '去下载',
+  updateDismiss: '关闭',
+  updateCheck: '检查更新',
+  updateChecking: '检查中…',
+  updateLatest: '已是最新版本',
+  updateUnreachable: '检查失败，连不上更新源',
+  updateCurrentVersion: '当前版本 {version}',
 } as const

@@ -80,7 +80,11 @@ export const createConfig = ({
       scriptLoading: 'defer',
       meta: { 'application-version': version },
     }),
-    new rspack.DefinePlugin({ __API_ORIGIN__: JSON.stringify(apiOrigin) }),
+    new rspack.DefinePlugin({
+      __API_ORIGIN__: JSON.stringify(apiOrigin),
+      // 版本清单地址：平时用源码里的默认值，本地验证时可以改成别的地址
+      __UPDATE_MANIFEST__: JSON.stringify(process.env.AR_UPDATE_MANIFEST ?? ''),
+    }),
     new rspack.CopyRspackPlugin({
       patterns: [{ from: path.resolve(root, 'LICENSE'), to: 'LICENSE', toType: 'file' }],
     }),
