@@ -8,6 +8,16 @@
   max-height: 340px;
 }
 
+/* 整页形态：列表撑满整页，不再限高 */
+.pageSection {
+  flex: 1;
+  min-height: 0;
+}
+
+.pageSection .list {
+  max-height: none;
+}
+
 .search {
   display: flex;
   flex-shrink: 0;

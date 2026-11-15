@@ -468,3 +468,17 @@
 .serviceInput::placeholder {
   color: var(--dsw-alias-label-tertiary);
 }
+
+/* 插件分组：一句总说明，然后每个插件一张卡；卡里展开它自己的配置 */
+.pluginIntro {
+  flex-shrink: 0;
+  margin: 4px 0 10px;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: var(--dsw-alias-font-xs-13);
+  line-height: 20px;
+}
+
+.pluginCard {
+  flex-shrink: 0;
+  padding-bottom: 6px;
+}

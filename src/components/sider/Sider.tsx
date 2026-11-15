@@ -11,6 +11,8 @@ import { IconButton } from '../base/IconButton.js'
 import { Modal } from '../base/Modal.js'
 import { showToast } from '../base/toastState.js'
 import { openSettings } from '../settings/settingsDialogState.js'
+import { useEnabledPlugins } from '../../plugins/registry.js'
+import { openChatPage, openPage, useAppPage } from '../../app/pageState.js'
 import { closeMobileSider, useMobileSider } from './mobileSiderState.js'
 import { SessionItem } from './SessionItem.js'
 import { UpdateBanner } from './UpdateBanner.js'
@@ -26,6 +28,9 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
   const groups = useMemo(() => groupSessions(sessions, now, t), [sessions, now, t])
   const [deleting, setDeleting] = useState<SessionSummary | null>(null)
   const [deletePending, setDeletePending] = useState(false)
+  // 启用的插件才在侧栏底部各占一行入口
+  const plugins = useEnabledPlugins()
+  const page = useAppPage((state) => state.page)
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>
@@ -75,6 +80,7 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
         className={styles.newChat}
         onClick={() => {
           newChat()
+          openChatPage()
           closeMobileSider()
         }}
       >
@@ -102,6 +108,21 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
       </div>
       <UpdateBanner />
       <div className={styles.bottom}>
+        {plugins.map((plugin) => (
+          <button
+            key={plugin.id}
+            type="button"
+            className={clsx(styles.pluginEntry, page === plugin.id && styles.entryActive)}
+            aria-current={page === plugin.id ? 'page' : undefined}
+            onClick={() => {
+              openPage(plugin.id)
+              closeMobileSider()
+            }}
+          >
+            <span className={styles.settingsIcon}>{plugin.icon}</span>
+            <span className={styles.settingsLabel}>{t(plugin.title)}</span>
+          </button>
+        ))}
         <button type="button" className={styles.settings} onClick={() => openSettings('general')}>
           <span className={styles.settingsIcon}>
             <IconSettingsOutline16 />

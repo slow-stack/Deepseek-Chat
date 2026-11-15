@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import clsx from 'clsx'
 import { useTranslate } from '../../i18n/index.js'
 import {
   loadMemories,
@@ -6,6 +7,7 @@ import {
   type MemoryRecord,
 } from '../../services/chat/memoryRead.js'
 import { Button } from '../base/Button.js'
+import { openSettings } from '../settings/settingsDialogState.js'
 import styles from './MemoryPanel.module.css'
 
 /** 一页取多少条；「加载更多」按这个步长往后翻 */
@@ -28,8 +30,11 @@ const formatDate = (value: string | null): string => {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
-/** 设置弹窗的「记忆」分组：检索或按时间翻看记忆库，读的是 mneme 记忆服务 */
-export const MemoryPanelContent = () => {
+/**
+ * 记忆浏览：检索或按时间翻看记忆库，读的是 mneme 记忆服务。
+ * 记忆页整页用它（variant='page'），设置里的小窗用它（variant='panel'）。
+ */
+export const MemoryBrowser = ({ variant = 'panel' }: { variant?: 'panel' | 'page' }) => {
   const t = useTranslate()
   const [draft, setDraft] = useState('')
   const [query, setQuery] = useState('')
@@ -87,11 +92,17 @@ export const MemoryPanelContent = () => {
       <div className={styles.notice}>
         <div className={styles.noticeTitle}>{t('memoryPanelMissing')}</div>
         <div className={styles.noticeBody}>{t('memoryPanelMissingHint')}</div>
+        <Button variant="outlined" size="m" onClick={() => openSettings('plugins')}>
+          {t('memoryPanelOpenSettings')}
+        </Button>
       </div>
     ) : state.kind === 'failed' ? (
       <div className={styles.notice}>
         <div className={styles.noticeTitle}>{t('memoryPanelFailed')}</div>
         <div className={styles.noticeBody}>{t('memoryPanelFailedHint')}</div>
+        <Button variant="outlined" size="m" onClick={() => openSettings('plugins')}>
+          {t('memoryPanelOpenSettings')}
+        </Button>
       </div>
     ) : null
 
@@ -99,7 +110,7 @@ export const MemoryPanelContent = () => {
   const total = state.kind === 'ready' ? state.total : null
 
   return (
-    <div className={styles.section}>
+    <div className={clsx(styles.section, variant === 'page' && styles.pageSection)}>
       <div className={styles.search}>
         <input
           className={styles.searchInput}
@@ -110,7 +121,9 @@ export const MemoryPanelContent = () => {
         />
       </div>
       <div className={styles.list}>
-        {state.kind === 'loading' ? <div className={styles.status}>{t('memoryPanelLoading')}</div> : null}
+        {state.kind === 'loading' ? (
+          <div className={styles.status}>{t('memoryPanelLoading')}</div>
+        ) : null}
         {hint}
         {state.kind === 'ready' && items.length === 0 ? (
           <div className={styles.notice}>
@@ -134,14 +147,18 @@ export const MemoryPanelContent = () => {
                   {formatDate(item.occurredAt ?? item.createdAt)}
                 </span>
               </button>
-              <div className={isOpen ? styles.itemContentOpen : styles.itemContent}>{item.content}</div>
+              <div className={isOpen ? styles.itemContentOpen : styles.itemContent}>
+                {item.content}
+              </div>
             </div>
           )
         })}
       </div>
       <div className={styles.footer}>
         <span className={styles.counter}>
-          {total === null ? t('memoryPanelShownCount', { count: items.length }) : t('memoryPanelTotal', { count: total })}
+          {total === null
+            ? t('memoryPanelShownCount', { count: items.length })
+            : t('memoryPanelTotal', { count: total })}
         </span>
         {items.length > 0 && (total === null || items.length < total) ? (
           <Button size="m" variant="outlined" disabled={moreBusy} onClick={() => void loadMore()}>

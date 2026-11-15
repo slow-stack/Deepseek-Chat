@@ -29,6 +29,8 @@ type Settings = {
   /** 压缩时完整保留的最近轮次数，2~20 */
   compactKeepRounds: number
   compactMode: CompactMode
+  /** 记忆插件开关；关掉时侧栏没有记忆页、聊天里也没有记忆按钮，等于没装 */
+  memoryPluginEnabled: boolean
   /** 记忆服务地址（mneme standalone API）。留空时走宿主代转，即只在 DSH 面板里可用 */
   memoryServiceUrl: string | null
   /** 记忆服务 token；只有自己填了地址时才用得上 */
@@ -50,6 +52,7 @@ const KEYS = {
   compactMode: 'chat-demo:compact-mode',
   memoryServiceUrl: 'chat-demo:memory-service-url',
   memoryServiceToken: 'chat-demo:memory-service-token',
+  memoryPluginEnabled: 'chat-demo:memory-plugin-enabled',
 } as const
 
 const read = (key: string) => {
@@ -109,6 +112,18 @@ const initialThemePreference = (): ThemePreference => {
 /** 未保存过时使用服务端默认音色 stella（海星） */
 const initialTtsVoice = (): TtsVoice => (read(KEYS.ttsVoice) === 'tide' ? 'tide' : 'stella')
 
+/**
+ * 记忆插件默认关着（装上不出现，用户想要才开）。
+ * 例外：已经填过服务地址或 token 的，说明本来就在用，升级后不能突然把它藏起来。
+ */
+const initialMemoryPluginEnabled = (): boolean => {
+  const saved = read(KEYS.memoryPluginEnabled)
+  if (saved === 'true' || saved === 'false') {
+    return saved === 'true'
+  }
+  return Boolean(read(KEYS.memoryServiceUrl) || read(KEYS.memoryServiceToken))
+}
+
 /** 百分比设置统一按整数存，越界时退回默认值 */
 const readNumber = (key: string, fallback: number, min: number, max: number): number => {
   const value = Number(read(key))
@@ -129,6 +144,7 @@ export const useSettings = create<Settings>(() => ({
   compactThreshold: readNumber(KEYS.compactThreshold, 70, 30, 95) / 100,
   compactKeepRounds: readNumber(KEYS.compactKeepRounds, 6, 2, 20),
   compactMode: read(KEYS.compactMode) === 'model' ? 'model' : 'local',
+  memoryPluginEnabled: initialMemoryPluginEnabled(),
   memoryServiceUrl: read(KEYS.memoryServiceUrl),
   memoryServiceToken: read(KEYS.memoryServiceToken),
 }))
@@ -208,4 +224,10 @@ export const setMemoryServiceToken = (value: string | null) => {
   const memoryServiceToken = value?.trim() || null
   write(KEYS.memoryServiceToken, memoryServiceToken)
   useSettings.setState({ memoryServiceToken })
+}
+
+/** 记忆插件开关：打开后侧栏才长出记忆页，聊天里才出现记忆按钮 */
+export const setMemoryPluginEnabled = (memoryPluginEnabled: boolean) => {
+  write(KEYS.memoryPluginEnabled, String(memoryPluginEnabled))
+  useSettings.setState({ memoryPluginEnabled })
 }
