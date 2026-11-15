@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useIsMobile } from '../../app/viewport.js'
+import { useTranslate } from '../../i18n/index.js'
 import {
   buildMessageVersions,
   getVisibleMessages,
   type MessageVersions,
 } from '../../services/chat/branches.js'
 import { selectMessageVersion } from '../../services/chat/store.js'
-import type { Session } from '../../services/chat/types.js'
+import type { Session, SessionCompaction } from '../../services/chat/types.js'
 import { closeSearchPanel } from '../search/searchPanelState.js'
 import { AssistantMessage } from './AssistantMessage.js'
 import { ScrollToBottomContext } from './scrollContext.js'
@@ -32,6 +33,38 @@ import styles from './MessageList.module.css'
 /** 距底部小于该值时视为在底部，流式内容增长时跟随 */
 const STICKY_THRESHOLD = 40
 const EMPTY_VERSIONS: MessageVersions = { ids: [], index: -1 }
+
+/**
+ * 会话开头提示更早的轮次已被压缩成摘要；点开能看被压掉的原文，
+ * 避免压缩变成黑盒——用户随时能核对模型「记住」的是不是原话。
+ */
+const CompactedBanner = ({ compaction }: { compaction: SessionCompaction }) => {
+  const t = useTranslate()
+  const [open, setOpen] = useState(false)
+  return (
+    <div className={styles.banner}>
+      <button
+        type="button"
+        className={styles.bannerToggle}
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <span className={styles.bannerLabel}>
+          {t('contextCompacted', { rounds: compaction.rounds })}
+        </span>
+        <span className={styles.bannerAction}>
+          {open ? t('contextHideOriginal') : t('contextShowOriginal')}
+        </span>
+      </button>
+      {open && (
+        <div className={styles.bannerBody}>
+          <div className={styles.bannerSection}>{t('contextOriginalTitle')}</div>
+          <pre className={styles.bannerText}>{compaction.originalText}</pre>
+        </div>
+      )}
+    </div>
+  )
+}
 
 export const MessageList = ({
   session,
@@ -146,6 +179,7 @@ export const MessageList = ({
       <div ref={isMobile ? undefined : scrollRef} className={styles.container}>
         <div ref={isMobile ? scrollRef : undefined} className={styles.scroll}>
           <div ref={contentRef} className={styles.column}>
+            {session.compaction && <CompactedBanner compaction={session.compaction} />}
             {messages.map((message, index) =>
               message.role === 'user' ? (
                 <UserMessage
