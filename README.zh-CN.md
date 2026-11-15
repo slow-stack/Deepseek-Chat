@@ -82,6 +82,15 @@ API Key 与设置存在浏览器 localStorage；会话与原始附件存在 Inde
 
 [rspack.config.ts](rspack.config.ts) 默认指向 `https://api.deepseek.com`，可用 `createConfig({ apiOrigin, devServer })` 改。聊天默认走 `deepseek-flash`，通过 Anthropic 兼容的 Messages / Files API；语音走 ASR/TTS 接口。请求里带了搜索、读链接、标题与 `latest_reminder` 等扩展字段，所以配置的服务要支持对应能力。附件格式由服务端校验决定。
 
+## 反馈
+
+没有后台，也没有群聊。三条路都通到同一个地方：
+
+- **GitHub 工单**：bug 与功能建议，公开可跟进，提之前先搜一下
+- **邮件**：work@modusensus.space，不想注册账号就走这条
+- **复制**：在「设置 → 关于 → 反馈」里复制正文，贴到哪儿都行
+
+应用内那个弹窗会替你把标题和正文写好，也可以附上版本与平台（不含任何对话内容或密钥）。详见 [docs/FEEDBACK.md](docs/FEEDBACK.md)。
 ## 声明
 
 - **非官方客户端。** 本项目由第三方维护，与 DeepSeek 官方无关联，未获其授权或背书；「DeepSeek」是其权利人的商标。
