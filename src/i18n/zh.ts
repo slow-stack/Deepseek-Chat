@@ -11,7 +11,7 @@ export const zh = {
   sessionSaveFailed: '对话或附件尚未保存到本机，关闭页面可能丢失，请重试',
   sessionDeleteFailed: '删除对话失败，请重试',
   settings: '设置',
-  appName: 'Deepseek Chat',
+  appName: 'Ariadne',
   backToHost: '返回 DSH 对话',
   memoryOn: '记忆',
   memoryOff: '记忆已关闭',
