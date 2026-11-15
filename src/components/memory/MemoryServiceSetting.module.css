@@ -44,3 +44,28 @@
   font-size: var(--dsw-alias-font-xs-13);
   line-height: 20px;
 }
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: -4px;
+  padding: 2px 6px 2px 2px;
+  border: 0;
+  border-radius: 8px;
+  background-color: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 14px;
+  line-height: 22px;
+  cursor: pointer;
+}
+
+.toggle:hover {
+  background-color: var(--dsw-alias-interactive-bg-hover, rgba(0, 0, 0, 0.06));
+}
+
+.toggle:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: 1px;
+}
