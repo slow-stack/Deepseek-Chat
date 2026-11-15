@@ -1,6 +1,5 @@
-import { IconArrowLeftOutline16, IconPanelLeftOutline16, NewChatIcon } from '../base/icons.js'
+import { IconPanelLeftOutline16, NewChatIcon } from '../base/icons.js'
 import { useTranslate } from '../../i18n/index.js'
-import { isEmbedded, leaveHost } from '../../app/embedded.js'
 import { setSiderCollapsed } from '../../services/settings.js'
 import { newChat } from '../../services/chat/store.js'
 import { IconButton } from '../base/IconButton.js'
@@ -12,15 +11,6 @@ export const CollapsedSider = () => {
   return (
     <div className={styles.collapsed}>
       <div className={styles.collapsedGroup}>
-        {isEmbedded() ? (
-          <IconButton
-            size="m"
-            tone="primary"
-            icon={<IconArrowLeftOutline16 />}
-            tooltip={t('backToHost')}
-            onClick={leaveHost}
-          />
-        ) : null}
         <IconButton
           size="m"
           tone="primary"

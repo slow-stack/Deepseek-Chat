@@ -1,8 +1,7 @@
 import type { ReactNode } from 'react'
-import { IconArrowLeftOutline16, IconMenuOutline20, IconNewChatOutline20 } from '../base/icons.js'
+import { IconMenuOutline20, IconNewChatOutline20 } from '../base/icons.js'
 import { useTranslate } from '../../i18n/index.js'
 import { newChat } from '../../services/chat/store.js'
-import { isEmbedded, leaveHost } from '../../app/embedded.js'
 import { IconButton } from '../base/IconButton.js'
 import { openMobileSider } from '../sider/mobileSiderState.js'
 import styles from './MobileHeader.module.css'
@@ -12,15 +11,6 @@ export const MobileHeader = ({ title, trailing }: { title?: string; trailing?: R
   const t = useTranslate()
   return (
     <div className={styles.header}>
-      {isEmbedded() ? (
-        <IconButton
-          size="xl"
-          tone="primary"
-          icon={<IconArrowLeftOutline16 />}
-          aria-label={t('backToHost')}
-          onClick={leaveHost}
-        />
-      ) : null}
       <IconButton
         size="xl"
         tone="primary"

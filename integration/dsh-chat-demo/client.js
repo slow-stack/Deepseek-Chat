@@ -70,9 +70,17 @@ window.__ModuleLoader__.load({
       )
     }
 
+    // 宿主自己的那圈「应用 / 编辑」顶栏是浮在面板上方的（约占面板顶部 32px），
+    // 所以出口按钮放在 38px 那一行，既不被顶栏压住，也不挡 app 自己的标题。
     const CSS = [
       '.dsh-chat-demo-root{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--dsw-alias-bg-base, #fff)}',
       '.dsh-chat-demo-frame{flex:1;width:100%;border:0;display:block;background:transparent}',
+      // 宿主侧的出口。iframe 里那个箭头要靠 postMessage 回来，链路上任何一环没接上
+      // 就出不去；这一颗是同一个 React 树里直接调 layout，不依赖跨文档消息。
+      '.dsh-chat-demo-exit{position:absolute;top:38px;right:12px;z-index:3;display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 10px 0 8px;border:1px solid var(--dsw-alias-border-subtle, rgba(0,0,0,.12));border-radius:999px;background:var(--dsw-alias-bg-elevated, rgba(255,255,255,.92));backdrop-filter:blur(6px);color:inherit;font:inherit;font-size:12px;line-height:1;cursor:pointer;opacity:.75;transition:opacity .15s,background .15s}',
+      '.dsh-chat-demo-exit:hover{opacity:1;background:var(--dsw-alias-interactive-bg-hover, rgba(0,0,0,.06))}',
+      '.dsh-chat-demo-exit-bad{opacity:1;border-color:rgba(200,70,70,.55);color:#c84646}',
+      '.dsh-chat-demo-exit:focus-visible{outline:2px solid var(--dsw-alias-accent, #4d6bfe);outline-offset:2px;opacity:1}',
       // 底部入口：几何对齐宿主 sidebar.settings 那一排，只用宿主的 token，
       // 这样收起/展开两态和原生按钮同高同宽，不会把 footer 撑歪。
       '.dsh-chat-demo-entry{display:flex;align-items:center;gap:8px;width:100%;height:32px;padding:0 8px;border:0;border-radius:8px;background:transparent;color:inherit;font:inherit;cursor:pointer;text-align:left}',
@@ -84,6 +92,14 @@ window.__ModuleLoader__.load({
 
     function Panel() {
       const frameRef = React.useRef(null)
+      // 切换失败时按钮自己报一句，省得去翻控制台才知道点没点动。
+      const [exitFailed, setExitFailed] = React.useState(false)
+      const onExit = () => {
+        const ok = leave ? leave() : false
+        if (ok) return
+        setExitFailed(true)
+        setTimeout(() => setExitFailed(false), 2500)
+      }
       React.useEffect(() => {
         refreshStatus()
         // 只认自己那个 iframe 发来的「返回」信号：宿主窗口里还跑着别的消息，
@@ -109,9 +125,38 @@ window.__ModuleLoader__.load({
           title: 'Deepseek Chat',
           allow: 'clipboard-write; microphone',
         }),
+        h(
+          'button',
+          {
+            key: 'exit',
+            type: 'button',
+            className: exitFailed ? 'dsh-chat-demo-exit dsh-chat-demo-exit-bad' : 'dsh-chat-demo-exit',
+            title: exitFailed ? '宿主拒绝了这次切换，控制台里有原因' : '返回 DSH 对话',
+            onClick: onExit,
+          },
+          h(
+            'svg',
+            {
+              width: 12,
+              height: 12,
+              viewBox: '0 0 16 16',
+              fill: 'none',
+              stroke: 'currentColor',
+              strokeWidth: 1.6,
+              strokeLinecap: 'round',
+              strokeLinejoin: 'round',
+              'aria-hidden': 'true',
+            },
+            h('path', { d: 'M13 8H3.4' }),
+            h('path', { d: 'M7.2 4L3.2 8l4 4' }),
+          ),
+          h('span', null, exitFailed ? '切不出去' : '返回对话'),
+        ),
       )
     }
 
+    // 只声明 slots：layout 用 ctx.get 取，拿不到也只是退化成「只会进不会出」，
+    // 写进 inject 反而会让整块界面在服务没就绪时干脆不注册。
     const inject = ['slots']
 
     function apply(ctx) {
@@ -141,11 +186,17 @@ window.__ModuleLoader__.load({
         else layout.selectPanel(PANEL_ID)
       }
       leave = () => {
-        if (!canSelect) return
+        if (!canSelect) {
+          console.warn('[dsh-chat-demo] 拿不到 layout.selectPanel，无法回到会话')
+          return false
+        }
         try {
           layout.selectPanel(null)
-        } catch {
-          /* 目标面板标不存在时宿主会抛，忽略即可 */
+          return true
+        } catch (err) {
+          // 以前这里静默吞掉，导致「点了没反应」查不出原因；宿主若改了签名要能看见。
+          console.warn('[dsh-chat-demo] selectPanel(null) 失败：', err)
+          return false
         }
       }
 
