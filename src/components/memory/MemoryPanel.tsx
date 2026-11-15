@@ -2,15 +2,24 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
 import { useTranslate } from '../../i18n/index.js'
 import { isCleartextFailure } from '../../services/chat/memoryEndpoint.js'
-import { loadMemories, type MemoryQuery, type MemoryRecord } from '../../services/chat/memoryRead.js'
+import {
+  loadMemories,
+  usesRemoteMemory,
+  type MemoryQuery,
+  type MemoryRecord,
+} from '../../services/chat/memoryRead.js'
 import { searchByVector, vectorReady } from '../../services/chat/memoryVector.js'
 import {
   countLocalMemories,
   countLocalMemoriesByType,
   countLocalMemoriesSince,
+  deleteLocalMemory,
 } from '../../services/chat/memoryStore.js'
 import { useSettings } from '../../services/settings.js'
 import { Button } from '../base/Button.js'
+import { IconButton } from '../base/IconButton.js'
+import { IconTrashOutline16 } from '../base/icons.js'
+import { showToast } from '../base/toastState.js'
 import { openSettings } from '../settings/settingsDialogState.js'
 import styles from './MemoryPanel.module.css'
 
@@ -76,6 +85,7 @@ export const MemoryBrowser = ({
   const [expanded, setExpanded] = useState<string | null>(null)
   const [moreBusy, setMoreBusy] = useState(false)
   const [stats, setStats] = useState<Stats | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const requestId = useRef(0)
 
   // 搜索框停顿 350ms 再查，避免每敲一个字打一次请求
@@ -150,6 +160,41 @@ export const MemoryBrowser = ({
     }
   }, [state, moreBusy, query])
 
+  /**
+   * 删一条记忆：只对本机库生效。
+   * 远端服务的删除接口各家不一样，不猜——连了远端就把按钮藏起来，
+   * 免得点了以为删了其实只删了本地一个不存在的 id。
+   */
+  const remove = useCallback(
+    async (item: MemoryRecord) => {
+      if (usesRemoteMemory() || deletingId) {
+        return
+      }
+      setDeletingId(item.id)
+      try {
+        await deleteLocalMemory(item.id)
+        setState((current) =>
+          current.kind === 'ready'
+            ? {
+                ...current,
+                items: current.items.filter((row) => row.id !== item.id),
+                total: current.total === null ? null : Math.max(0, current.total - 1),
+              }
+            : current
+        )
+        setStats((current) =>
+          current ? { ...current, total: Math.max(0, current.total - 1) } : current
+        )
+        setExpanded((current) => (current === item.id ? null : current))
+      } catch {
+        showToast({ key: 'memoryPanelDeleteFailed', type: 'error' })
+      } finally {
+        setDeletingId(null)
+      }
+    },
+    [deletingId]
+  )
+
   const hint =
     state.kind === 'failed' ? (
       <div className={styles.notice}>
@@ -167,6 +212,8 @@ export const MemoryBrowser = ({
 
   const items = state.kind === 'ready' ? state.items : []
   const total = state.kind === 'ready' ? state.total : null
+  // 连了远端记忆服务时没有统一的删除接口，按钮直接不出现，不做「点了没反应」
+  const removable = !usesRemoteMemory()
 
   return (
     <div className={clsx(styles.section, variant === 'page' && styles.pageSection)}>
@@ -211,18 +258,32 @@ export const MemoryBrowser = ({
           const isOpen = expanded === item.id
           return (
             <div key={item.id} className={styles.item}>
-              <button
-                type="button"
-                className={styles.itemHead}
-                aria-expanded={isOpen}
-                onClick={() => setExpanded(isOpen ? null : item.id)}
-              >
-                <span className={styles.itemTitle}>{item.title || item.content.slice(0, 40)}</span>
-                <span className={styles.itemMeta}>
-                  <span className={styles.typeTag}>{item.type}</span>
-                  {formatDate(item.occurredAt ?? item.createdAt)}
-                </span>
-              </button>
+              <div className={styles.itemHeadRow}>
+                <button
+                  type="button"
+                  className={styles.itemHead}
+                  aria-expanded={isOpen}
+                  onClick={() => setExpanded(isOpen ? null : item.id)}
+                >
+                  <span className={styles.itemTitle}>
+                    {item.title || item.content.slice(0, 40)}
+                  </span>
+                  <span className={styles.itemMeta}>
+                    <span className={styles.typeTag}>{item.type}</span>
+                    {formatDate(item.occurredAt ?? item.createdAt)}
+                  </span>
+                </button>
+                {removable ? (
+                  <IconButton
+                    size="xs"
+                    icon={<IconTrashOutline16 />}
+                    tooltip={t('memoryPanelDelete')}
+                    aria-label={t('memoryPanelDelete')}
+                    disabled={deletingId === item.id}
+                    onClick={() => void remove(item)}
+                  />
+                ) : null}
+              </div>
               <div className={isOpen ? styles.itemContentOpen : styles.itemContent}>
                 {item.content}
               </div>

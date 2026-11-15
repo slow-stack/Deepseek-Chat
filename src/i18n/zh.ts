@@ -34,6 +34,8 @@ export const zh = {
   memoryPanelTotal: '共 {count} 条',
   memoryPanelShownCount: '已显示 {count} 条',
   memoryPanelLoadMore: '加载更多',
+  memoryPanelDelete: '删除这条记忆',
+  memoryPanelDeleteFailed: '删不掉这条记忆',
   memoryServiceTitle: '记忆存放位置',
   memoryServiceLocal: '本机',
   memoryServiceLocalHint: '默认就在这里：跟着应用走，离线可用，不经过任何服务。',

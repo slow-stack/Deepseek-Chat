@@ -37,6 +37,8 @@ export const en = {
   memoryPanelTotal: '{count} in total',
   memoryPanelShownCount: '{count} shown',
   memoryPanelLoadMore: 'Load more',
+  memoryPanelDelete: 'Delete this memory',
+  memoryPanelDeleteFailed: 'Could not delete this memory',
   memoryServiceTitle: 'Where memory lives',
   memoryServiceLocal: 'This device',
   memoryServiceLocalHint: 'The default: travels with the app, works offline, passes through no service.',
