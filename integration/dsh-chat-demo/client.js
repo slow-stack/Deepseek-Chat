@@ -131,7 +131,7 @@ window.__ModuleLoader__.load({
             key: 'exit',
             type: 'button',
             className: exitFailed ? 'dsh-chat-demo-exit dsh-chat-demo-exit-bad' : 'dsh-chat-demo-exit',
-            title: exitFailed ? '宿主拒绝了这次切换，控制台里有原因' : '返回 DSH 对话',
+            title: exitFailed ? '宿主拒绝了这次切换，控制台里有原因' : '返回对话',
             onClick: onExit,
           },
           h(
