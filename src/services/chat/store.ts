@@ -65,6 +65,8 @@ const SAFETY_CHECK = { level: 'high' } as const
 const FILE_RETRY_LIMIT = 2
 /** 退避基数，第 n 次重试等待 2^n 倍；连续失败达到上限就放弃，把原始报错展示出来 */
 const FILE_RETRY_BASE_DELAY = 1000
+/** 等回复收尾的上限：流卡死时不能陪着一起卡住（导入要替换历史，卡住等于永远进不去） */
+const IDLE_TIMEOUT = 15_000
 
 /** 阅读链接始终开启，智能搜索开关控制是否另行声明搜索工具（含边想边搜）。 */
 const serverTools = (search: boolean): CreateMessageRequest['tools'] => {
@@ -408,8 +410,13 @@ const ensureSessionLoaded = (id: string): Promise<void> => {
   return load.promise
 }
 
-/** 等所有回复的收尾（落盘）完成 */
-const waitForIdle = (sessionId?: string) =>
+/**
+ * 等所有回复的收尾（落盘）完成。
+ * 只看 streaming 是否清空并不保险：某个流的收尾若卡在自己的 await 上，这里会永远等下去，
+ * 界面既不报错也没有进度。所以给一个超时兜底，并接受取消信号——导入里那一步等的是被 abort 的流，
+ * 晚到的落盘已经被 historyEpoch 挡掉，先往下走不会写回旧数据。
+ */
+const waitForIdle = (sessionId?: string, signal?: AbortSignal) =>
   new Promise<void>((resolve) => {
     const isIdle = (state: ChatState) =>
       sessionId === undefined
@@ -419,12 +426,28 @@ const waitForIdle = (sessionId?: string) =>
       resolve()
       return
     }
-    const unsubscribe = useChatStore.subscribe((state) => {
+    // 信号可能在进来之前就已经取消了，addEventListener 不会补发一次。
+    if (signal?.aborted) {
+      resolve()
+      return
+    }
+    let unsubscribe = () => {}
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const finish = () => {
+      unsubscribe()
+      if (timer !== undefined) {
+        clearTimeout(timer)
+      }
+      signal?.removeEventListener('abort', finish)
+      resolve()
+    }
+    unsubscribe = useChatStore.subscribe((state) => {
       if (isIdle(state)) {
-        unsubscribe()
-        resolve()
+        finish()
       }
     })
+    timer = setTimeout(finish, IDLE_TIMEOUT)
+    signal?.addEventListener('abort', finish, { once: true })
   })
 
 /**
@@ -450,7 +473,9 @@ export const replaceHistory = async (
     historyEpoch += 1
     initTask = undefined
     sessionLoads.clear()
-    await waitForIdle()
+    // 等待期间用户可能按了取消：这里先退出，暂存交给 catch 里统一清掉。
+    await waitForIdle(undefined, controller.signal)
+    controller.signal.throwIfAborted()
     await db.clearStaging()
     let summaries: SessionSummary[]
     let done = 0
