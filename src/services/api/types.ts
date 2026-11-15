@@ -66,6 +66,8 @@ export type WebSearchResult = {
   image_url?: string
   /** 可直接展示的网页摘要 */
   snippet: string
+  /** 给模型读的长摘要；只有客户端直连 Search API 时才带（服务端工具结果里没有这个字段） */
+  summary?: string
   /** 站点图标 URL；无法取得注册域名时为 null */
   site_icon: string | null
   /** 无站点名称时为 null */

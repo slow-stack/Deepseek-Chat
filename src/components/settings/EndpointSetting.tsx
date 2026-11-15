@@ -16,6 +16,7 @@ import styles from './EndpointSetting.module.css'
 const LABELS: Record<ApiCapability, { title: TranslationKey; description: TranslationKey }> = {
   chat: { title: 'endpointChatTitle', description: 'endpointChatDescription' },
   summary: { title: 'endpointSummaryTitle', description: 'endpointSummaryDescription' },
+  search: { title: 'endpointSearchTitle', description: 'endpointSearchDescription' },
   tts: { title: 'endpointTtsTitle', description: 'endpointTtsDescription' },
   asr: { title: 'endpointAsrTitle', description: 'endpointAsrDescription' },
 }

@@ -23,3 +23,16 @@ export const modelFor = (capability: ApiCapability, fallback: string): string =>
   const model = useSettings.getState().endpoints[capability].model
   return model || fallback
 }
+
+/**
+ * 这条能力有没有自己的接口。
+ *
+ * 联网搜索靠它分流：配了就走客户端直连，留空仍然交给服务端在对话请求里执行。
+ */
+export const hasOwnEndpoint = (capability: ApiCapability): boolean => {
+  const override = useSettings.getState().endpoints[capability]
+  return Boolean(override.baseUrl || override.apiKey)
+}
+
+/** 联网搜索是否由客户端自己执行 */
+export const searchEndpointConfigured = (): boolean => hasOwnEndpoint('search')

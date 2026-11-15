@@ -164,6 +164,7 @@ const initialEndpoints = (): EndpointSettings => {
     return {
       chat: emptyOverride(),
       summary: emptyOverride(),
+      search: emptyOverride(),
       tts: emptyOverride(),
       asr: emptyOverride(),
     }
