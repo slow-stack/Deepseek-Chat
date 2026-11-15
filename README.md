@@ -82,6 +82,15 @@ Settings → Data → Delete all chats clears local conversations, attachments, 
 
 [rspack.config.ts](rspack.config.ts) points at `https://api.deepseek.com` by default; `createConfig({ apiOrigin, devServer })` changes that. Chat uses `deepseek-flash` through the Anthropic-compatible Messages and Files APIs, and speech uses the ASR/TTS endpoints. Requests carry extensions for search, link reading, titles, and `latest_reminder`, so the configured service has to support them. Supported attachment formats are decided by server-side validation.
 
+## Feedback
+
+No backend, no group chat. Three routes reach the same place:
+
+- **GitHub issues** for bugs and feature requests — tracked publicly, so search first
+- **Email** to work@modusensus.space when you would rather not have an account
+- **Copy** the text out of Settings → About → Feedback and paste it wherever you like
+
+Inside the app, that dialog fills in the title and body for you and can attach the version and platform (never your conversations or keys). Details in [docs/FEEDBACK.md](docs/FEEDBACK.md).
 ## Notices
 
 - **Unofficial client.** This project is maintained by a third party and is not affiliated with, authorised by, or endorsed by DeepSeek. "DeepSeek" is a trademark of its owner.
