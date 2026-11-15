@@ -164,6 +164,17 @@ export const en = {
   settingDialogAsideGeneralOptionLabel: 'General',
   settingDialogAsidePluginsOptionLabel: 'Plugins',
   settingDialogAsideDataOptionLabel: 'Data',
+  settingDialogAsideAboutOptionLabel: 'About',
+  aboutVersionTitle: 'Version',
+  aboutUnofficialTitle: 'Unofficial client',
+  aboutUnofficialDescription:
+    'Maintained by a third party, not affiliated with DeepSeek. You configure the API yourself and requests never pass through this project.',
+  aboutLicenseTitle: 'License',
+  aboutLicenseDescription:
+    'MIT, and the build ships LICENSE plus NOTICE. Icons come from Lucide (ISC); other dependencies keep their own licenses.',
+  aboutDataTitle: 'Where your data lives',
+  aboutDataDescription:
+    'Chats, attachments, projects and settings stay in this browser’s IndexedDB. Clearing site data or uninstalling removes them.',
   avatarMenuSettingsDialogThemeItemLabel: 'Theme',
   avatarMenuSettingsDialogThemeSelectLightOption: 'Light',
   avatarMenuSettingsDialogThemeSelectDarkOption: 'Dark',

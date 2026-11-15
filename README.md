@@ -82,8 +82,15 @@ Settings → Data → Delete all chats clears local conversations, attachments, 
 
 [rspack.config.ts](rspack.config.ts) points at `https://api.deepseek.com` by default; `createConfig({ apiOrigin, devServer })` changes that. Chat uses `deepseek-flash` through the Anthropic-compatible Messages and Files APIs, and speech uses the ASR/TTS endpoints. Requests carry extensions for search, link reading, titles, and `latest_reminder`, so the configured service has to support them. Supported attachment formats are decided by server-side validation.
 
+## Notices
+
+- **Unofficial client.** This project is maintained by a third party and is not affiliated with, authorised by, or endorsed by DeepSeek. "DeepSeek" is a trademark of its owner.
+- **Bring your own API.** The app ships no keys and runs no server of its own: requests go straight from your device to the endpoint you configure, and usage is billed to your account.
+- **Your data stays on the device.** Chats, attachments, projects, and memory settings live in the browser's IndexedDB. Clearing site data or uninstalling deletes them, so keep your own backups.
+- **Provided as is.** No warranty of any kind; you use it at your own risk.
+
 ## License
 
-[MIT](LICENSE). The build copies the license to `dist/LICENSE`; include it when distributing the app. Third-party dependencies keep their own licenses.
+[MIT](LICENSE). The build copies the license and [NOTICE](NOTICE) into `dist/`; include both when distributing the app. Third-party dependencies keep their own licenses; icons come from [Lucide](https://lucide.dev) (ISC).
 
 The upstream project is [deepseek-ai/chat-demo](https://github.com/deepseek-ai/chat-demo), also MIT. Interfaces kept from upstream remain compatible; the additions above are this fork's.

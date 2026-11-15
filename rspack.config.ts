@@ -86,7 +86,10 @@ export const createConfig = ({
       __UPDATE_MANIFEST__: JSON.stringify(process.env.AR_UPDATE_MANIFEST ?? ''),
     }),
     new rspack.CopyRspackPlugin({
-      patterns: [{ from: path.resolve(root, 'LICENSE'), to: 'LICENSE', toType: 'file' }],
+      patterns: [
+        { from: path.resolve(root, 'LICENSE'), to: 'LICENSE', toType: 'file' },
+        { from: path.resolve(root, 'NOTICE'), to: 'NOTICE', toType: 'file' },
+      ],
     }),
   ],
   performance: { hints: false },

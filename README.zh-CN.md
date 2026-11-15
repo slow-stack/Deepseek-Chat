@@ -82,8 +82,15 @@ API Key 与设置存在浏览器 localStorage；会话与原始附件存在 Inde
 
 [rspack.config.ts](rspack.config.ts) 默认指向 `https://api.deepseek.com`，可用 `createConfig({ apiOrigin, devServer })` 改。聊天默认走 `deepseek-flash`，通过 Anthropic 兼容的 Messages / Files API；语音走 ASR/TTS 接口。请求里带了搜索、读链接、标题与 `latest_reminder` 等扩展字段，所以配置的服务要支持对应能力。附件格式由服务端校验决定。
 
+## 声明
+
+- **非官方客户端。** 本项目由第三方维护，与 DeepSeek 官方无关联，未获其授权或背书；「DeepSeek」是其权利人的商标。
+- **API 由你自备。** 应用不含任何密钥，也不经过本项目的服务器：请求直接从你的设备发往你自己配置的接口，费用与用量由你的账号承担。
+- **数据留在本机。** 会话、附件、项目与记忆配置都存在浏览器的 IndexedDB 里，卸载或清除站点数据即会删除，请自行备份。
+- **按现状提供。** 不作任何明示或默示担保，因使用产生的后果由使用者承担。
+
 ## 许可
 
-[MIT](LICENSE)。构建会把许可证拷到 `dist/LICENSE`，分发时一并带上。第三方依赖各自遵循自己的许可。
+[MIT](LICENSE)。构建会把许可证与 [NOTICE](NOTICE) 一起拷到 `dist/`，分发时一并带上。第三方依赖各自遵循自己的许可，图标取自 [Lucide](https://lucide.dev)（ISC）。
 
 上游项目是 [deepseek-ai/chat-demo](https://github.com/deepseek-ai/chat-demo)，同为 MIT。与上游保持一致的部分会继续兼容，上面列的是本 fork 自己的改动。

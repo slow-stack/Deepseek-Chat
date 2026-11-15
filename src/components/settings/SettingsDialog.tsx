@@ -5,6 +5,7 @@ import {
   IconDataOutline16,
   IconDownloadOutline16,
   IconFollowsystemOutline16,
+  IconInfoOutline16,
   IconLightOutline16,
   IconPlugOutline16,
   IconSettingsOutline16,
@@ -59,6 +60,7 @@ const sections: { value: SettingsSection; label: TranslationKey; icon: ReactNode
   },
   { value: 'plugins', label: 'settingDialogAsidePluginsOptionLabel', icon: <IconPlugOutline16 /> },
   { value: 'data', label: 'settingDialogAsideDataOptionLabel', icon: <IconDataOutline16 /> },
+  { value: 'about', label: 'settingDialogAsideAboutOptionLabel', icon: <IconInfoOutline16 /> },
 ]
 
 const SettingsContent = () => {
@@ -112,7 +114,7 @@ const SettingsContent = () => {
             </>
           ) : section === 'plugins' ? (
             <PluginList />
-          ) : (
+          ) : section === 'data' ? (
             <>
               <ApiKeyField editor={apiKeyEditor} />
               <ImportHistory historyImport={historyImport} disabled={historyBusy} />
@@ -134,6 +136,8 @@ const SettingsContent = () => {
               />
               {isMobile ? <ApiKeyConfirm editor={apiKeyEditor} /> : null}
             </>
+          ) : (
+            <AboutSetting />
           )}
         </div>
       </Modal>
@@ -524,6 +528,51 @@ const errorStatus = (key: TranslationKey, error: unknown): Status => ({
     : { params: { message: error instanceof Error ? error.message : String(error) } }),
   error: true,
 })
+
+/**
+ * 关于：说明这不是官方客户端、代码怎么许可、数据放在哪。
+ * 分发出去的包只有这几行字能讲清出处，所以不塞别的。
+ */
+const AboutSetting = () => {
+  const t = useTranslate()
+  return (
+    <>
+      <SettingCell
+        label={t('aboutVersionTitle')}
+        description={currentVersion()}
+        status={null}
+        action={null}
+      />
+      <SettingCell
+        label={t('aboutUnofficialTitle')}
+        description={t('aboutUnofficialDescription')}
+        status={null}
+        action={
+          <a
+            className={styles.aboutLink}
+            href="https://github.com/slow-stack/Deepseek-Chat"
+            target="_blank"
+            rel="noreferrer"
+          >
+            GitHub
+          </a>
+        }
+      />
+      <SettingCell
+        label={t('aboutLicenseTitle')}
+        description={t('aboutLicenseDescription')}
+        status={null}
+        action={null}
+      />
+      <SettingCell
+        label={t('aboutDataTitle')}
+        description={t('aboutDataDescription')}
+        status={null}
+        action={null}
+      />
+    </>
+  )
+}
 
 const SettingCell = ({
   label,
