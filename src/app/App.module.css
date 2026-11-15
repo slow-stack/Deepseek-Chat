@@ -12,8 +12,11 @@
     var(--dsw-alias-bg-base);
 }
 
+/* 嵌在宿主面板里时，顶上要让开两条：宿主浮层那条「应用 / 编辑」（约 32px），
+   以及插件画在 iframe 之上、38px 那一行的「返回对话」胶囊（到 64px）。
+   72px 是这两条合起来的高度，别单独调小任何一个。 */
 :global(html[data-embedded='true']) .frame {
-  padding-top: 44px;
+  padding-top: 72px;
 }
 
 .main {
