@@ -33,6 +33,8 @@ const DIAG_FILE = join(DIAG_DIR, "diag.log");
 /** mneme 的记忆库与 standalone API 位置（token 也从这里取，见 readExternalApi）。 */
 const MEMORY_DB = "D:/DSH/.dsh/memory/memory.db";
 const MEMORY_ROUTE = "/api/dsh-chat-demo/memory";
+/** 读记忆：带 q 走检索、不带 q 走分页列表，结果原样透传 */
+const MEMORY_READ_ROUTE = "/api/dsh-chat-demo/memories";
 /**
  * 对话入库的作用域，写死不给前端拼。
  * 理由：POST /memories 的 workspace_scope 只校验「非空字符串」，不校验形状
@@ -305,6 +307,67 @@ async function handleMemoryWrite(req, res) {
   }
 }
 
+const replyRaw = (res, status, text) => {
+  res.writeHead(status, {
+    "content-type": "application/json; charset=utf-8",
+    "cache-control": "no-store",
+  });
+  res.end(text);
+};
+
+/**
+ * GET /api/dsh-chat-demo/memories —— 读记忆。
+ *
+ * 带 q 走 mneme 的 /search（关键词 + 语义混合，失败时上游自己降级），
+ * 不带 q 走 /memories 分页列表。token 只在这个进程里出现，不回前端。
+ */
+async function handleMemoryRead(req, res) {
+  if (req.method !== "GET") {
+    res.writeHead(405, { allow: "GET" });
+    res.end();
+    return;
+  }
+  const url = new URL(String(req.url || "/"), "http://127.0.0.1");
+  const query = (url.searchParams.get("q") || "").trim();
+  const limitRaw = Number(url.searchParams.get("limit") || 20);
+  const limit = Math.min(Math.max(Number.isFinite(limitRaw) ? limitRaw : 20, 1), 100);
+  const offsetRaw = Number(url.searchParams.get("offset") || 0);
+  const offset = Math.max(Number.isFinite(offsetRaw) ? offsetRaw : 0, 0);
+  const path = query
+    ? `/search?q=${encodeURIComponent(query)}&topK=${limit}`
+    : `/memories?limit=${limit}&offset=${offset}&order=desc`;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    let api;
+    try {
+      api = readExternalApi();
+    } catch (error) {
+      reply(res, 503, { error: "memory-api-unavailable", message: String(error?.message ?? error) });
+      return;
+    }
+    try {
+      const upstream = await fetch(`${api.base}${path}`, {
+        headers: { authorization: `Bearer ${api.token}`, accept: "application/json" },
+        signal: AbortSignal.timeout(10000),
+      });
+      if ((upstream.status === 401 || upstream.status === 403) && attempt === 0) {
+        // 用户可能刚在设置页换了 token，重读一次再试
+        forgetExternalApi();
+        continue;
+      }
+      replyRaw(res, upstream.status, await upstream.text());
+      return;
+    } catch (error) {
+      if (attempt === 0) {
+        forgetExternalApi();
+        continue;
+      }
+      void diag(`记忆读取失败：${error?.message ?? error}`);
+      reply(res, 502, { error: "memory-api-unreachable", message: String(error?.message ?? error) });
+      return;
+    }
+  }
+}
+
 /** 端口被占时，先确认占着的是不是我们自己那台（换 DSH 版本后热重载会撞上）。 */
 async function probeExisting(host, port) {
   try {
@@ -388,6 +451,11 @@ function applyInner(ctx, config = {}) {
     // 面板自己（8096 同源）发起的记忆写入；静态产物走 GET/HEAD，互不干扰。
     if (String(req.url || "").split("?")[0] === MEMORY_ROUTE) {
       void handleMemoryWrite(req, res);
+      return;
+    }
+    // 记忆面板的读取面；同样只在同源 iframe 里用得上
+    if (String(req.url || "").split("?")[0] === MEMORY_READ_ROUTE) {
+      void handleMemoryRead(req, res);
       return;
     }
     serveDist(req, res);

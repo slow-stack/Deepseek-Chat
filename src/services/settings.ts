@@ -29,6 +29,10 @@ type Settings = {
   /** 压缩时完整保留的最近轮次数，2~20 */
   compactKeepRounds: number
   compactMode: CompactMode
+  /** 记忆服务地址（mneme standalone API）。留空时走宿主代转，即只在 DSH 面板里可用 */
+  memoryServiceUrl: string | null
+  /** 记忆服务 token；只有自己填了地址时才用得上 */
+  memoryServiceToken: string | null
 }
 
 const KEYS = {
@@ -44,6 +48,8 @@ const KEYS = {
   compactThreshold: 'chat-demo:compact-threshold',
   compactKeepRounds: 'chat-demo:compact-keep-rounds',
   compactMode: 'chat-demo:compact-mode',
+  memoryServiceUrl: 'chat-demo:memory-service-url',
+  memoryServiceToken: 'chat-demo:memory-service-token',
 } as const
 
 const read = (key: string) => {
@@ -123,6 +129,8 @@ export const useSettings = create<Settings>(() => ({
   compactThreshold: readNumber(KEYS.compactThreshold, 70, 30, 95) / 100,
   compactKeepRounds: readNumber(KEYS.compactKeepRounds, 6, 2, 20),
   compactMode: read(KEYS.compactMode) === 'model' ? 'model' : 'local',
+  memoryServiceUrl: read(KEYS.memoryServiceUrl),
+  memoryServiceToken: read(KEYS.memoryServiceToken),
 }))
 
 export const setLocale = (locale: Locale) => {
@@ -187,4 +195,17 @@ export const setCompactKeepRounds = (value: number) => {
 export const setCompactMode = (compactMode: CompactMode) => {
   write(KEYS.compactMode, compactMode)
   useSettings.setState({ compactMode })
+}
+
+/** 地址与 token 都按去掉首尾空格存；空串等于没填 */
+export const setMemoryServiceUrl = (value: string | null) => {
+  const memoryServiceUrl = value?.trim() || null
+  write(KEYS.memoryServiceUrl, memoryServiceUrl)
+  useSettings.setState({ memoryServiceUrl })
+}
+
+export const setMemoryServiceToken = (value: string | null) => {
+  const memoryServiceToken = value?.trim() || null
+  write(KEYS.memoryServiceToken, memoryServiceToken)
+  useSettings.setState({ memoryServiceToken })
 }

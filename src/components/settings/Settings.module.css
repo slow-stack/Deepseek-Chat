@@ -446,3 +446,25 @@
   color: var(--dsw-alias-label-tertiary);
   font: var(--dsw-alias-font-xs-13, 13px/20px var(--dsw-font-family));
 }
+
+.serviceInput {
+  box-sizing: border-box;
+  width: 260px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 10px;
+  background-color: transparent;
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+}
+
+.serviceInput:focus-visible {
+  border-color: var(--dsw-alias-brand-primary);
+}
+
+.serviceInput::placeholder {
+  color: var(--dsw-alias-label-tertiary);
+}

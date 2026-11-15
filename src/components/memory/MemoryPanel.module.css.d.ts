@@ -1,0 +1,20 @@
+declare const styles: {
+  readonly "dialog": string;
+  readonly "search": string;
+  readonly "searchInput": string;
+  readonly "list": string;
+  readonly "item": string;
+  readonly "itemHead": string;
+  readonly "itemTitle": string;
+  readonly "itemMeta": string;
+  readonly "typeTag": string;
+  readonly "itemContent": string;
+  readonly "itemContentOpen": string;
+  readonly "status": string;
+  readonly "notice": string;
+  readonly "noticeTitle": string;
+  readonly "noticeBody": string;
+  readonly "footer": string;
+  readonly "counter": string;
+};
+export = styles;
