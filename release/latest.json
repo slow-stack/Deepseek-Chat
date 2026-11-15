@@ -1,5 +1,5 @@
 {
-  "versionName": "0.1.1",
+  "versionName": "0.1.2",
   "downloadUrl": "https://github.com/slow-stack/Deepseek-Chat/releases/latest",
-  "notes": ""
+  "notes": "记忆面板收进设置，可翻看与搜索记忆库；导入提速；启动检查更新。"
 }
