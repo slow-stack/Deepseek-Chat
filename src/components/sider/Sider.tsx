@@ -17,7 +17,6 @@ import { closeMobileSider, useMobileSider } from './mobileSiderState.js'
 import { ProjectList } from './ProjectList.js'
 import { SessionItem } from './SessionItem.js'
 import { UpdateBanner } from './UpdateBanner.js'
-import { runUpdateCheck } from './updateBannerState.js'
 import styles from './Sider.module.css'
 
 /** 展开的侧边栏：名称与收起按钮、开启新对话、按时间分组的会话列表、底部设置；移动端放在抽屉里，收起按钮关闭抽屉 */
@@ -62,10 +61,7 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
     }
   }, [])
 
-  // 进页面顺手问一次更新，问不到就算了，不打扰用户
-  useEffect(() => {
-    void runUpdateCheck()
-  }, [])
+  // 更新检查在 App 里统一触发，侧栏收起或移动端抽屉关着时也能提示
 
   return (
     <div className={clsx(styles.sider, mobile && styles.mobile)}>

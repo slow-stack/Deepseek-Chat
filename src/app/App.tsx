@@ -24,6 +24,8 @@ import { stopReadAloud } from '../services/speech/readAloud.js'
 import { CollapsedSider } from '../components/sider/CollapsedSider.js'
 import { closeMobileSider } from '../components/sider/mobileSiderState.js'
 import { MobileSider, Sider } from '../components/sider/Sider.js'
+import { UpdateDialog } from '../components/sider/UpdateDialog.js'
+import { runUpdateCheck } from '../components/sider/updateBannerState.js'
 import { useEnabledPlugins } from '../plugins/registry.js'
 import { openChatPage, useAppPage } from './pageState.js'
 import styles from './App.module.css'
@@ -94,6 +96,12 @@ export const App = () => {
     ensureApiKey()
   }, [])
 
+  // 进页面顺手问一次更新，问不到就算了，不打扰用户。
+  // 放在 App 而不是侧栏里：侧栏收起或移动端抽屉关着时也要能提示。
+  useEffect(() => {
+    void runUpdateCheck()
+  }, [])
+
   return (
     <>
       <div ref={frameRef} className={styles.frame}>
@@ -156,6 +164,7 @@ export const App = () => {
         <SearchPanel />
       </div>
       <SettingsDialog />
+      <UpdateDialog />
       <Toast />
     </>
   )
