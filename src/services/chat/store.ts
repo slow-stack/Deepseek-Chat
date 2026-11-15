@@ -19,9 +19,11 @@ import {
   applyEvent,
   canContinueReply,
   getContextRounds,
+  getReplyText,
   settleReply,
   toRequestMessages,
 } from './reply.js'
+import { saveTurnToMemory } from './memory.js'
 import {
   toSessionSummary,
   type AssistantMessage,
@@ -1111,5 +1113,10 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
       ),
     }))
     persist(sessionId)
+    // 记忆是旁路：只在本轮正常答完时入库，关掉开关的会话整段跳过，写失败也不改回复状态。
+    const session = getSession(sessionId)
+    if (session && reply.status === 'done') {
+      void saveTurnToMemory(session, request.question, reply, getReplyText(reply))
+    }
   }
 }
