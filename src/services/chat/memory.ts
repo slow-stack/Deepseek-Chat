@@ -1,4 +1,5 @@
 import { useSettings } from '../settings.js'
+import { memoryServiceErrorOf } from './memoryEndpoint.js'
 import { saveLocalMemory } from './memoryStore.js'
 import type { AssistantMessage, Session, UserMessage } from './types.js'
 
@@ -50,7 +51,11 @@ const memoryContentOf = (
 
 export type MemoryWriteResult =
   | { ok: true; action: string }
-  | { ok: false; reason: 'disabled' | 'empty' | 'unreachable' | 'rejected'; message?: string }
+  | {
+      ok: false
+      reason: 'disabled' | 'empty' | 'unreachable' | 'rejected' | 'cleartext'
+      message?: string
+    }
 
 /**
  * 把一轮已完成的对话写进记忆库。挂在本轮收尾处，失败一律不抛：记忆是旁路，
@@ -121,7 +126,8 @@ export const saveTurnToMemory = async (
       parsed && typeof parsed === 'object' && 'action' in parsed ? String(parsed.action) : 'saved'
     return { ok: true, action }
   } catch {
-    return { ok: false, reason: 'unreachable' }
+    // 明文地址在这台设备上会被直接拦掉，跟「服务没起」长得一样，得分开报
+    return { ok: false, reason: memoryServiceErrorOf(base).reason }
   } finally {
     clearTimeout(timer)
   }
