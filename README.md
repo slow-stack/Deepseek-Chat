@@ -1,75 +1,89 @@
-# chat-demo
+# Ariadne
 
 English | [简体中文](README.zh-CN.md)
 
-A static chat demo powered by the DeepSeek API. No application backend is required: the browser connects directly to the configured API service.
+A chat client for the DeepSeek API that keeps the whole conversation: every branch you tried, every reply you kept. The name is Ariadne's thread, the line that leads back out.
 
-You can [try the app online](https://deepseek-ai.github.io/chat-demo/) or download the archive from [Releases](https://github.com/deepseek-ai/deepseek-chat-demo/releases), extract it, and double-click `index.html` to use it locally without installation or a build. Enter your API key in Settings before your first chat.
+No application backend is required. The browser talks to the configured API service directly. The same build runs as a static site, as a panel inside DeepSeek Harness, and as an Android app.
+
+This is a fork of [deepseek-ai/chat-demo](https://github.com/deepseek-ai/chat-demo). What the fork adds is listed [below](#what-this-fork-adds).
 
 ## Getting started
 
-Install Node.js 22.12+ and pnpm, then run:
+Install Node.js 22.12+ and pnpm, then:
 
 ```sh
-git clone https://github.com/deepseek-ai/chat-demo.git
-cd chat-demo
+git clone https://github.com/slow-stack/Deepseek-Chat.git
+cd Deepseek-Chat
 pnpm install
 pnpm dev
 ```
 
-Open http://localhost:8090.
-
-To build the static site:
+Open http://localhost:8090. To build the static site:
 
 ```sh
 pnpm build
 ```
 
-The output is written to `dist/`. Deploy it to a static web server or open `dist/index.html` directly. Opening the file directly requires browser support for storage on `file://` pages and an API service that permits their cross-origin requests.
+The output lands in `dist/`. Serve it from a static host, or open `dist/index.html` directly — that needs browser support for storage on `file://` pages and an API service that allows their cross-origin requests.
 
 ## Features
 
-- Multiple conversations with automatic titles, renaming, and deletion; edit prompts, regenerate replies, and switch between message branches.
-- Streaming replies, deep thinking, smart search, link reading, and source citations; stop generation or continue eligible replies.
-- Upload, paste, or drag and drop attachments; use voice input and read replies aloud. A live audio spectrum appears in the first row of the input area while recording on mobile.
+- Conversations with automatic titles, renaming, deletion, prompt editing, regeneration, and switchable message branches.
+- Streaming replies, deep thinking, smart search, link reading, and source citations; stop a reply or continue it.
+- Upload, paste, or drag attachments; voice input and read-aloud replies, with a live audio spectrum while recording on mobile.
 - Markdown, syntax highlighting, KaTeX math, and Mermaid diagrams.
-- Simplified Chinese and English, light and dark themes, mobile layouts, location settings, and chat history import and export.
+- Chinese and English, light and dark themes, mobile layouts, location settings, and chat history import and export.
+
+## What this fork adds
+
+- **Long conversations stay inside the context window.** Older turns are compacted into summaries when a session grows past the limit, with a chip in the composer showing what was folded and a way to inspect it.
+- **A way out of the panel.** Inside DeepSeek Harness the back button belongs to the host, not to the app: it calls `layout.selectPanel(null)` and says so when the host refuses, instead of leaving you with no exit.
+- **A launch-time update check.** Sideloaded builds ask a release manifest whether a newer version exists, and point at the download if it does. It never installs anything by itself. See [release/README.md](release/README.md).
+- **Faster history import.** Importing a 21MB archive took 11.2s on a phone-class CPU; it takes about 4.5s now, because the ZIP reader stopped verifying CRC32 one byte at a time.
+
+## Where things live
+
+```text
+src/                   Application source
+  app/                 Layout, themes, global styles
+  components/          Chat, settings, markdown, and other UI
+  services/
+    api/               Requests, SSE, protocol types
+    chat/              Conversations, branches, storage, import/export, compaction
+  services/update.ts   Version manifest check
+release/               Release manifest the update check reads
+scripts/               Build helpers
+```
+
+Two integrations live beside it:
+
+- `integration/dsh-chat-demo/` — the DeepSeek Harness panel: a host process serving `dist/` on a fixed port, plus a client that registers the sidebar entry and a full-page iframe. Fixed port because conversation storage is per-origin. See its [README](integration/dsh-chat-demo/README.md).
+- The Android shell (Capacitor) is maintained outside this repository; it wraps the same `dist/` build.
 
 ## Data and storage
 
-Your API key and settings are stored in the browser's localStorage. Conversations and original attachments are stored in IndexedDB. Local data is isolated by browser profile and site origin. Sending messages, uploading attachments, and using speech features sends the relevant content to the configured API service.
+The API key and settings live in the browser's localStorage. Conversations and original attachments live in IndexedDB, isolated by browser profile and origin. Sending a message, uploading an attachment, or using speech sends that content to the configured API service.
 
-History import and export in Settings use ZIP archives. After confirmation and successful validation, importing replaces all local conversations and attachments. Exports include conversations and locally available original images, but exclude API keys, settings, and original non-image attachments. See the [history import/export documentation (Chinese)](src/services/chat/history/README.md) for the archive format and preservation details.
+History import and export use ZIP archives. Importing replaces all local conversations and attachments after validation; exports include conversations and available original images, but no API keys, settings, or non-image attachments. The archive format is documented in [src/services/chat/history/README.md](src/services/chat/history/README.md).
 
-Settings → Data → Delete all chats clears all local conversations, original attachments, and unsent drafts after confirmation. It stops ongoing replies and returns to a new chat. Your API key and settings are preserved; files already uploaded to the API service are not deleted.
+Settings → Data → Delete all chats clears local conversations, attachments, and drafts after confirmation. It keeps your API key and settings.
 
 ## Development
 
-| Command       | Description                  |
-| ------------- | ---------------------------- |
-| `pnpm dev`    | Start the development server |
-| `pnpm build`  | Build into `dist/`           |
-| `pnpm type`   | Run TypeScript type checks   |
-| `pnpm lint`   | Lint with oxlint             |
-| `pnpm format` | Format with oxfmt            |
+| Command           | Description                          |
+| ----------------- | ------------------------------------ |
+| `pnpm dev`        | Development server                   |
+| `pnpm build`      | Build into `dist/`                   |
+| `pnpm build:panel`| Build and deploy into the DSH panel  |
+| `pnpm type`       | TypeScript type checks               |
+| `pnpm lint`       | Lint with oxlint                     |
+| `pnpm format`     | Format with oxfmt                    |
 
-[rspack.config.ts](rspack.config.ts) uses `https://api.deepseek.com` by default. Use `createConfig({ apiOrigin, devServer })` to customize the API origin and development server proxy.
-
-Chat uses `deepseek-flash` by default through Anthropic-compatible Messages / Files APIs. Speech features use ASR / TTS endpoints. Requests include extensions for search, link reading, titles, and `latest_reminder`, so the configured service must support the corresponding capabilities. Supported attachment formats are determined by server-side validation.
-
-```text
-src/
-  app/                 Application layout, themes, and global styles
-  components/          Chat, settings, Markdown, and other UI components
-  i18n/                English and Chinese translations
-  services/
-    api/               API requests, SSE, and protocol types
-    chat/              Conversations, message branches, storage, and history import/export
-    markdown/          Markdown parsing, syntax highlighting, and diagrams
-    speech/            Audio recording and read-aloud playback
-  utils/               Shared utilities
-```
+[rspack.config.ts](rspack.config.ts) points at `https://api.deepseek.com` by default; `createConfig({ apiOrigin, devServer })` changes that. Chat uses `deepseek-flash` through the Anthropic-compatible Messages and Files APIs, and speech uses the ASR/TTS endpoints. Requests carry extensions for search, link reading, titles, and `latest_reminder`, so the configured service has to support them. Supported attachment formats are decided by server-side validation.
 
 ## License
 
-[MIT](LICENSE). The build copies the license to `dist/LICENSE`; include it when distributing the app. Third-party dependencies are subject to their own licenses.
+[MIT](LICENSE). The build copies the license to `dist/LICENSE`; include it when distributing the app. Third-party dependencies keep their own licenses.
+
+The upstream project is [deepseek-ai/chat-demo](https://github.com/deepseek-ai/chat-demo), also MIT. Interfaces kept from upstream remain compatible; the additions above are this fork's.
