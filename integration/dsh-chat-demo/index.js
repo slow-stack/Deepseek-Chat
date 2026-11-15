@@ -152,6 +152,12 @@ function forgetExternalApi() {
   externalApi = null;
 }
 
+/**
+ * 标题 → mneme 记忆 id。同一轮被续写或重新生成时（标题不变、正文变长）
+ * 用它判断该新建还是原地更新；进程内即可，重启后最多多建一行。
+ */
+const memoryIds = new Map();
+
 const MAX_MEMORY_BODY = 1024 * 1024;
 
 function readJsonBody(req, limit) {
@@ -278,16 +284,15 @@ async function handleMemoryWrite(req, res) {
       } catch {
         parsed = { raw: text.slice(0, 200) };
       }
-      // PUT 的返回是 { memory: {...} }，POST 的是记忆本身 + action。
+      // PUT 的返回是 { memory: {...} }，POST 的是记忆本身 + action；统一成后者。
       const saved = parsed?.memory ?? parsed;
       if (typeof saved?.id === "string" && saved.id) {
         memoryIds.set(title, saved.id);
       }
+      const action = parsed?.action ?? (targetId ? "updated" : "saved");
       // 201/200 建或并、422 内容被准入判据拒 —— 都是 mneme 的明确答复，原样透传。
-      void diag(
-        `memory ${targetId ? "更新" : "写入"} status=${upstream.status} action=${parsed?.action ?? (targetId ? "updated" : "-")}`
-      );
-      reply(res, upstream.status, { ...parsed, action: parsed?.action ?? (targetId ? "updated" : "saved") });
+      void diag(`memory ${targetId ? "更新" : "写入"} status=${upstream.status} action=${action}`);
+      reply(res, upstream.status, { ...saved, action });
       return;
     } catch (error) {
       if (attempt === 0) {
