@@ -38,6 +38,7 @@ import {
 import { useTranslate, type TranslationKey, type TranslationMessage } from '../../i18n/index.js'
 import { Button } from '../base/Button.js'
 import { Modal } from '../base/Modal.js'
+import { FeedbackDialog } from './FeedbackDialog.js'
 import { Select } from '../base/Select.js'
 import { showToast } from '../base/toastState.js'
 import { PLUGINS, enabledPluginIds, setPluginEnabled } from '../../plugins/registry.js'
@@ -82,6 +83,8 @@ const SettingsContent = () => {
   const isMobile = useIsMobile()
   // 打开时按调用方指定的分组选中，之后在弹窗内切换
   const [section, setSection] = useState(() => useSettingsDialog.getState().section)
+  const [feedbackOpened, setFeedbackOpened] = useState(false)
+  const feedback = { open: () => setFeedbackOpened(true), close: () => setFeedbackOpened(false) }
   // 切换分组不丢失正在输入的 API Key 与导入状态
   const apiKeyEditor = useApiKeyEditor()
   const historyImport = useHistoryImport()
@@ -155,12 +158,13 @@ const SettingsContent = () => {
               {isMobile ? <ApiKeyConfirm editor={apiKeyEditor} /> : null}
             </>
           ) : (
-            <AboutSetting />
+            <AboutSetting onFeedback={feedback.open} />
           )}
         </div>
       </Modal>
       {historyImport.file ? <ImportConfirm historyImport={historyImport} /> : null}
       {historyDelete.opened ? <DeleteAllConfirm historyDelete={historyDelete} /> : null}
+      {feedbackOpened ? <FeedbackDialog onClose={feedback.close} /> : null}
     </>
   )
 }
@@ -551,7 +555,7 @@ const errorStatus = (key: TranslationKey, error: unknown): Status => ({
  * 关于：说明这不是官方客户端、代码怎么许可、数据放在哪。
  * 分发出去的包只有这几行字能讲清出处，所以不塞别的。
  */
-const AboutSetting = () => {
+const AboutSetting = ({ onFeedback }: { onFeedback: () => void }) => {
   const t = useTranslate()
   return (
     <>
@@ -560,6 +564,16 @@ const AboutSetting = () => {
         description={currentVersion()}
         status={null}
         action={null}
+      />
+      <SettingCell
+        label={t('feedbackEntryTitle')}
+        description={t('feedbackEntryDescription')}
+        status={null}
+        action={
+          <Button variant="outlined" size="m" className={styles.cellButton} onClick={onFeedback}>
+            {t('feedbackOpen')}
+          </Button>
+        }
       />
       <SettingCell
         label={t('aboutUnofficialTitle')}
