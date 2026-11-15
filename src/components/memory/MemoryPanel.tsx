@@ -1,11 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
 import { useTranslate } from '../../i18n/index.js'
-import {
-  loadMemories,
-  MemoryServiceMissing,
-  type MemoryRecord,
-} from '../../services/chat/memoryRead.js'
+import { loadMemories, type MemoryRecord } from '../../services/chat/memoryRead.js'
 import { Button } from '../base/Button.js'
 import { openSettings } from '../settings/settingsDialogState.js'
 import styles from './MemoryPanel.module.css'
@@ -16,7 +12,6 @@ const PAGE_SIZE = 20
 type PanelState =
   | { kind: 'loading' }
   | { kind: 'ready'; items: MemoryRecord[]; total: number | null; mode: string | null }
-  | { kind: 'missing' }
   | { kind: 'failed' }
 
 const formatDate = (value: string | null): string => {
@@ -59,11 +54,11 @@ export const MemoryBrowser = ({ variant = 'panel' }: { variant?: 'panel' | 'page
         }
         setState({ kind: 'ready', items: page.items, total: page.total, mode: page.mode })
       })
-      .catch((error: unknown) => {
+      .catch(() => {
         if (id !== requestId.current) {
           return
         }
-        setState({ kind: error instanceof MemoryServiceMissing ? 'missing' : 'failed' })
+        setState({ kind: 'failed' })
       })
   }, [query])
 
@@ -88,15 +83,7 @@ export const MemoryBrowser = ({ variant = 'panel' }: { variant?: 'panel' | 'page
   }, [state, moreBusy, query])
 
   const hint =
-    state.kind === 'missing' ? (
-      <div className={styles.notice}>
-        <div className={styles.noticeTitle}>{t('memoryPanelMissing')}</div>
-        <div className={styles.noticeBody}>{t('memoryPanelMissingHint')}</div>
-        <Button variant="outlined" size="m" onClick={() => openSettings('plugins')}>
-          {t('memoryPanelOpenSettings')}
-        </Button>
-      </div>
-    ) : state.kind === 'failed' ? (
+    state.kind === 'failed' ? (
       <div className={styles.notice}>
         <div className={styles.noticeTitle}>{t('memoryPanelFailed')}</div>
         <div className={styles.noticeBody}>{t('memoryPanelFailedHint')}</div>
