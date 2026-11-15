@@ -24,6 +24,8 @@ import {
   isChineseBrowser,
   setLocale,
   setLocation,
+  setMemoryServiceToken,
+  setMemoryServiceUrl,
   setSkin,
   setThemePreference,
   setTtsVoice,
@@ -105,7 +107,8 @@ const SettingsContent = () => {
               <LocaleSetting />
               <TtsVoiceSetting />
               <LocationSetting />
-              <UpdateSetting />
+              <MemoryServiceSetting />
+                <UpdateSetting />
             </>
           ) : (
             <>
@@ -294,6 +297,45 @@ const LocaleSetting = () => {
         />
       }
     />
+  )
+}
+
+/** 记忆服务：留空走宿主代转（只在 DSH 面板里有效），填了就直连（APK 用） */
+const MemoryServiceSetting = () => {
+  const t = useTranslate()
+  const url = useSettings((state) => state.memoryServiceUrl)
+  const token = useSettings((state) => state.memoryServiceToken)
+  return (
+    <>
+      <SettingCell
+        label={t('memoryServiceUrlLabel')}
+        description={t('memoryServiceUrlHint')}
+        status={null}
+        action={
+          <input
+            className={styles.serviceInput}
+            defaultValue={url ?? ''}
+            placeholder="http://192.168.0.101:8790"
+            aria-label={t('memoryServiceUrlLabel')}
+            onBlur={(event) => setMemoryServiceUrl(event.target.value)}
+          />
+        }
+      />
+      <SettingCell
+        label={t('memoryServiceTokenLabel')}
+        description={t('memoryServiceTokenHint')}
+        status={null}
+        action={
+          <input
+            className={styles.serviceInput}
+            type="password"
+            defaultValue={token ?? ''}
+            aria-label={t('memoryServiceTokenLabel')}
+            onBlur={(event) => setMemoryServiceToken(event.target.value)}
+          />
+        }
+      />
+    </>
   )
 }
 

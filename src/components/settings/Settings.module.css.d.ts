@@ -34,6 +34,7 @@ declare const styles: {
   readonly "importConfirmText": string;
   readonly "deleteConfirm": string;
   readonly "deleteActions": string;
+  readonly "serviceInput": string;
 };
 export = styles;
 
