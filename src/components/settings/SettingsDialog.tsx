@@ -8,6 +8,7 @@ import {
   IconFollowsystemOutline16,
   IconInfoOutline16,
   IconLightOutline16,
+  IconLinkOutline16,
   IconPlugOutline16,
   IconSettingsOutline16,
   IconUploadOutline14,
@@ -42,6 +43,7 @@ import { showToast } from '../base/toastState.js'
 import { PLUGINS, enabledPluginIds, setPluginEnabled } from '../../plugins/registry.js'
 import { ApiKeyConfirm, ApiKeyField, useApiKeyEditor } from './ApiKeyField.js'
 import { ContextSetting } from './ContextSetting.js'
+import { EndpointSetting } from './EndpointSetting.js'
 import { closeSettings, useSettingsDialog, type SettingsSection } from './settingsDialogState.js'
 import styles from './Settings.module.css'
 
@@ -64,6 +66,11 @@ const sections: { value: SettingsSection; label: TranslationKey; icon: ReactNode
     value: 'context',
     label: 'settingDialogAsideContextOptionLabel',
     icon: <IconContextOutline16 />,
+  },
+  {
+    value: 'endpoints',
+    label: 'settingDialogAsideEndpointsOptionLabel',
+    icon: <IconLinkOutline16 />,
   },
   { value: 'plugins', label: 'settingDialogAsidePluginsOptionLabel', icon: <IconPlugOutline16 /> },
   { value: 'data', label: 'settingDialogAsideDataOptionLabel', icon: <IconDataOutline16 /> },
@@ -121,6 +128,8 @@ const SettingsContent = () => {
             </>
           ) : section === 'context' ? (
             <ContextSetting />
+          ) : section === 'endpoints' ? (
+            <EndpointSetting />
           ) : section === 'plugins' ? (
             <PluginList />
           ) : section === 'data' ? (

@@ -1,4 +1,5 @@
 import { streamMessage } from '../api/client.js'
+import { modelFor } from '../api/endpoints.js'
 import type { ChatModel, MessageParam } from '../api/types.js'
 import { getContextRounds, getReplyText } from './reply.js'
 import type {
@@ -16,6 +17,8 @@ export const CONTEXT_WINDOW = 128_000
 
 /** 摘要请求用的模型与身份说明，和主对话保持一致 */
 const SUMMARY_MODEL: ChatModel = 'deepseek-flash'
+/** 设置里给摘要单独配了模型就用那个，否则用内置默认 */
+const summaryModel = (): ChatModel => modelFor('summary', SUMMARY_MODEL) as ChatModel
 /**
  * 摘要是一次后台整理，不是对话：必须明确禁止模型接着往下聊，
  * 否则它会以助手口吻写一段回复而不是摘要。
@@ -183,7 +186,7 @@ const requestModelSummary = async (
   const events = streamMessage(
     apiKey,
     {
-      model: SUMMARY_MODEL,
+      model: summaryModel(),
       system: SUMMARY_SYSTEM,
       messages,
       thinking: { type: 'disabled' },
