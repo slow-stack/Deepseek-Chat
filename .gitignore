@@ -1,5 +1,5 @@
 node_modules/
-dist/
+/dist/
 build/
 .pnpm-store/
 .cache/
@@ -9,3 +9,5 @@ build/
 .env.*
 !.env.example
 tmp/
+
+*.bak-diag-*

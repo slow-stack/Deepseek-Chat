@@ -1,0 +1,40 @@
+# dsh-chat-demo · 面板显示名 Deepseek Chat
+
+把 [deepseek-ai/chat-demo](https://github.com/deepseek-ai/chat-demo) 作为 DSH 的一个面板挂起来。
+
+## 两层
+
+- **Host（index.js）**：把 `dist/` 挂在 `http://127.0.0.1:8096`（端口在 `cordis.patch.yml` 里配），
+  并提供 `/api/dsh-chat-demo/status` 供面板自查。
+- **Client（client.js）**：注册 `sidebar.panellist`（左侧栏图标）与 `main`（整页 iframe）。
+
+## 为什么是固定端口 + iframe
+
+chat-demo 的会话与附件存在浏览器 IndexedDB，按 origin 隔离；端口一变就是另一个空库。
+所以 origin 必须稳定，而 `http://127.0.0.1:8096` 是真实、稳定的 http origin。
+桌面端 UI 跑在自定义协议上，那个 origin 下的 iframe 存储行为不可预期。
+
+## 记忆面
+
+这个插件不 import mneme，也不写会话日志：在 chat-demo 里聊什么都不会进 mneme。
+隔离不是配置开关，是没有写入口。
+
+## 安装（本机已装）
+
+profile 的 `package.json`：
+- `dependencies["dsh-chat-demo"] = "link:C:/Users/石晴/Desktop/chat-demo/integration/dsh-chat-demo"`
+- `dsh.profile.bundles` 里追加 `"dsh-chat-demo"`
+
+然后 `pnpm install --ignore-scripts`，重启 DSH。
+
+## 更新界面
+
+改完 `chat-demo/src` 后重新构建，再把产物拷进来：
+
+```bash
+cd C:/Users/石晴/Desktop/chat-demo
+NODE_ENV=production pnpm exec rspack build -c rspack.config.ts
+cp -r dist integration/dsh-chat-demo/dist
+```
+
+（`pnpm build` 在 Windows cmd 下会因为 `NODE_ENV=production` 前缀报错，所以要这样绕。）

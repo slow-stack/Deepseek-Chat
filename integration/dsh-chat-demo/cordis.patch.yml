@@ -1,0 +1,10 @@
+# dsh-chat-demo bundle patch：宿主半边在这个 package 里，客户端面板由 package.json 的
+# dsh.client 声明。纯 insert（只有 id/name）可以热挂载。
+- insert:
+    - id: dsh-chat-demo
+      name: dsh-chat-demo
+      config:
+        # chat-demo 必须有一个固定的 http origin：它的会话与附件存在 IndexedDB 里，
+        # origin（含端口）一变就等于换了个空库。改这个端口 = 换一个新库。
+        port: 8096
+        host: 127.0.0.1
