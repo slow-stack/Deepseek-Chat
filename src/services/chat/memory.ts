@@ -1,3 +1,4 @@
+import { useSettings } from '../settings.js'
 import type { AssistantMessage, Session, UserMessage } from './types.js'
 
 /**
@@ -15,13 +16,19 @@ import type { AssistantMessage, Session, UserMessage } from './types.js'
 export const isMemoryEnabled = (session: Pick<Session, 'memoryEnabled'> | undefined): boolean =>
   session?.memoryEnabled !== false
 
+/**
+ * 记忆插件是总开关：插件在设置里关着时，这套记忆等于没装——
+ * 不写入、不读取、侧栏与聊天框也不长任何入口。
+ */
+const isMemoryPluginOn = (): boolean => useSettings.getState().memoryPluginEnabled
+
 /** 写库前调用；返回 false 时必须整段跳过入库，不能当成「降权写入」。 */
 export const canWriteMemory = (session: Pick<Session, 'memoryEnabled'> | undefined): boolean =>
-  isMemoryEnabled(session)
+  isMemoryPluginOn() && isMemoryEnabled(session)
 
 /** 取记忆上下文前调用；返回 false 时不要请求记忆库，也不要拼接检索结果。 */
 export const canReadMemory = (session: Pick<Session, 'memoryEnabled'> | undefined): boolean =>
-  isMemoryEnabled(session)
+  isMemoryPluginOn() && isMemoryEnabled(session)
 
 /**
  * 入库路由。同源，由插件 `integration/dsh-chat-demo/index.js` 代转到 mneme 的
@@ -68,11 +75,22 @@ export const saveTurnToMemory = async (
     content: memoryContentOf(session as Session, question, replyText),
     occurred_at: new Date(reply.createdAt || Date.now()).toISOString(),
   }
+  // 填了记忆服务地址就直连（APK / 浏览器都行），没填走宿主代转（只在 DSH 面板里有效）。
+  const { memoryServiceUrl, memoryServiceToken } = useSettings.getState()
+  const base = memoryServiceUrl ? memoryServiceUrl.replace(/\/+$/, '') : ''
+  const endpoint = base ? `${base}/memories` : MEMORY_ENDPOINT
+  const headers: Record<string, string> = { 'content-type': 'application/json' }
+  if (base && memoryServiceToken) {
+    headers.authorization = `Bearer ${memoryServiceToken}`
+  }
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 10000)
   try {
-    const response = await fetch(MEMORY_ENDPOINT, {
+    const response = await fetch(endpoint, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers,
       body: JSON.stringify(body),
+      signal: controller.signal,
     })
     const parsed: unknown = await response.json().catch(() => null)
     if (!response.ok) {
@@ -90,5 +108,7 @@ export const saveTurnToMemory = async (
     return { ok: true, action }
   } catch {
     return { ok: false, reason: 'unreachable' }
+  } finally {
+    clearTimeout(timer)
   }
 }

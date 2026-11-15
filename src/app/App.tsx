@@ -24,6 +24,8 @@ import { stopReadAloud } from '../services/speech/readAloud.js'
 import { CollapsedSider } from '../components/sider/CollapsedSider.js'
 import { closeMobileSider } from '../components/sider/mobileSiderState.js'
 import { MobileSider, Sider } from '../components/sider/Sider.js'
+import { useEnabledPlugins } from '../plugins/registry.js'
+import { openChatPage, useAppPage } from './pageState.js'
 import styles from './App.module.css'
 
 export const App = () => {
@@ -49,6 +51,11 @@ export const App = () => {
     state.activeId === null ? false : Object.hasOwn(state.streaming, state.activeId)
   )
   const activeId = useChatStore((state) => state.activeId)
+  // 主区域也可以是插件页；插件关掉后自动退回对话
+  const plugins = useEnabledPlugins()
+  const page = useAppPage((state) => state.page)
+  const activePlugin = page === 'chat' ? null : (plugins.find((item) => item.id === page) ?? null)
+  const ActivePluginPage = activePlugin?.Page
 
   usePreventPageScroll(isMobile)
 
@@ -71,6 +78,15 @@ export const App = () => {
   useEffect(stopReadAloud, [activeId])
   // 移动端选中会话、切换布局后收起抽屉
   useEffect(closeMobileSider, [activeId, isMobile])
+
+  // 选会话、开新对话都回到对话页
+  useEffect(openChatPage, [activeId])
+  // 插件被关掉（或这一页已经不存在）时退回对话，不留一页打不开的空白
+  useEffect(() => {
+    if (page !== 'chat' && !activePlugin) {
+      openChatPage()
+    }
+  }, [page, activePlugin])
 
   useEffect(() => {
     void initChat()
@@ -98,7 +114,9 @@ export const App = () => {
           ) : null}
           <div className={styles.content}>
             {siderCollapsed ? <CollapsedSider /> : null}
-            {!ready || (activeId !== null && !session) ? (
+            {ActivePluginPage ? (
+              <ActivePluginPage />
+            ) : !ready || (activeId !== null && !session) ? (
               <div className={styles.loadingView}>
                 {isMobile ? <MobileHeader /> : null}
                 <div className={styles.loadingState} role="status" aria-live="polite">

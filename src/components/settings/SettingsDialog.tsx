@@ -1,12 +1,12 @@
 import clsx from 'clsx'
 import { useRef, useState, type ReactNode } from 'react'
 import {
-  IconBrainOutline16,
   IconDarkOutline16,
   IconDataOutline16,
   IconDownloadOutline16,
   IconFollowsystemOutline16,
   IconLightOutline16,
+  IconPlugOutline16,
   IconSettingsOutline16,
   IconUploadOutline14,
 } from '../base/icons.js'
@@ -25,8 +25,6 @@ import {
   isChineseBrowser,
   setLocale,
   setLocation,
-  setMemoryServiceToken,
-  setMemoryServiceUrl,
   setSkin,
   setThemePreference,
   setTtsVoice,
@@ -39,7 +37,7 @@ import { Button } from '../base/Button.js'
 import { Modal } from '../base/Modal.js'
 import { Select } from '../base/Select.js'
 import { showToast } from '../base/toastState.js'
-import { MemoryPanelContent } from '../memory/MemoryPanel.js'
+import { PLUGINS, enabledPluginIds, setPluginEnabled } from '../../plugins/registry.js'
 import { ApiKeyConfirm, ApiKeyField, useApiKeyEditor } from './ApiKeyField.js'
 import { closeSettings, useSettingsDialog, type SettingsSection } from './settingsDialogState.js'
 import styles from './Settings.module.css'
@@ -59,7 +57,7 @@ const sections: { value: SettingsSection; label: TranslationKey; icon: ReactNode
     label: 'settingDialogAsideGeneralOptionLabel',
     icon: <IconSettingsOutline16 />,
   },
-  { value: 'memory', label: 'settingDialogAsideMemoryOptionLabel', icon: <IconBrainOutline16 /> },
+  { value: 'plugins', label: 'settingDialogAsidePluginsOptionLabel', icon: <IconPlugOutline16 /> },
   { value: 'data', label: 'settingDialogAsideDataOptionLabel', icon: <IconDataOutline16 /> },
 ]
 
@@ -112,11 +110,8 @@ const SettingsContent = () => {
               <LocationSetting />
               <UpdateSetting />
             </>
-          ) : section === 'memory' ? (
-            <>
-              <MemoryServiceSetting />
-              <MemoryPanelContent />
-            </>
+          ) : section === 'plugins' ? (
+            <PluginList />
           ) : (
             <>
               <ApiKeyField editor={apiKeyEditor} />
@@ -307,41 +302,41 @@ const LocaleSetting = () => {
   )
 }
 
-/** 记忆服务：留空走宿主代转（只在 DSH 面板里有效），填了就直连（APK 用） */
-const MemoryServiceSetting = () => {
+/**
+ * 插件清单：默认全关，装上不影响聊天。打开一个插件后，它的入口才会出现在侧栏，
+ * 它自己的配置（服务地址之类）也在这一行下面展开。
+ */
+const PluginList = () => {
   const t = useTranslate()
-  const url = useSettings((state) => state.memoryServiceUrl)
-  const token = useSettings((state) => state.memoryServiceToken)
+  const ids = useSettings(enabledPluginIds)
+  const enabledIds = new Set(ids.split(',').filter(Boolean))
   return (
     <>
-      <SettingCell
-        label={t('memoryServiceUrlLabel')}
-        description={t('memoryServiceUrlHint')}
-        status={null}
-        action={
-          <input
-            className={styles.serviceInput}
-            defaultValue={url ?? ''}
-            placeholder="http://192.168.0.101:8790"
-            aria-label={t('memoryServiceUrlLabel')}
-            onBlur={(event) => setMemoryServiceUrl(event.target.value)}
-          />
-        }
-      />
-      <SettingCell
-        label={t('memoryServiceTokenLabel')}
-        description={t('memoryServiceTokenHint')}
-        status={null}
-        action={
-          <input
-            className={styles.serviceInput}
-            type="password"
-            defaultValue={token ?? ''}
-            aria-label={t('memoryServiceTokenLabel')}
-            onBlur={(event) => setMemoryServiceToken(event.target.value)}
-          />
-        }
-      />
+      <p className={styles.pluginIntro}>{t('pluginsIntro')}</p>
+      {PLUGINS.map((plugin) => {
+        const on = enabledIds.has(plugin.id)
+        const PluginSettings = plugin.Settings
+        return (
+          <div key={plugin.id} className={styles.pluginCard}>
+            <SettingCell
+              label={t(plugin.title)}
+              description={t(plugin.description)}
+              status={null}
+              action={
+                <Button
+                  variant={on ? 'outlined' : 'primary'}
+                  size="m"
+                  className={styles.cellButton}
+                  onClick={() => setPluginEnabled(plugin.id, !on)}
+                >
+                  {t(on ? 'pluginDisable' : 'pluginEnable')}
+                </Button>
+              }
+            />
+            {on && PluginSettings ? <PluginSettings /> : null}
+          </div>
+        )
+      })}
     </>
   )
 }

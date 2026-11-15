@@ -65,6 +65,8 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
     sessionId === null ? undefined : state.sessionCache[sessionId]
   )
   const memoryEnabled = isMemoryEnabled(session)
+  /** 记忆插件关着时，这个会话级开关也不该出现——整套记忆等于没装 */
+  const memoryPluginOn = useSettings((state) => state.memoryPluginEnabled)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const togglesRef = useRef<HTMLDivElement>(null)
@@ -238,7 +240,7 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
               <span className={styles.toggleLabel}>{t('search')}</span>
             </button>
           </Tooltip>
-          {sessionId === null ? null : (
+          {sessionId === null || !memoryPluginOn ? null : (
             <Tooltip content={memoryEnabled ? t('memoryOnHint') : t('memoryOffHint')}>
               <button
                 type="button"
