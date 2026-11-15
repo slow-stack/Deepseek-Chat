@@ -6,10 +6,25 @@
  * 清单是一个 JSON 文件，字段见 UpdateManifest。
  */
 
-/** 远端版本清单；构建时可用 AR_UPDATE_MANIFEST 覆盖（本地测试用） */
-export const UPDATE_MANIFEST_URL =
-  __UPDATE_MANIFEST__ ||
-  'https://raw.githubusercontent.com/slow-stack/Deepseek-Chat/main/release/latest.json'
+const MANIFEST_PATH = '/slow-stack/Deepseek-Chat/main/release/latest.json'
+
+/**
+ * 版本清单地址，按顺序尝试，第一个取到就用。
+ *
+ * raw.githubusercontent.com 在国内经常连不上，用户点「检查更新」只会看到
+ * 「连不上更新源」。所以再放两个 jsDelivr 的 CDN 节点兜底——它们同样托管
+ * 这个仓库的 main 分支，内容一致，且都回 `Access-Control-Allow-Origin: *`。
+ */
+export const UPDATE_MANIFEST_URLS: string[] = [
+  ...(__UPDATE_MANIFEST__ ? [__UPDATE_MANIFEST__] : []),
+  `https://raw.githubusercontent.com${MANIFEST_PATH}`,
+  `https://fastly.jsdelivr.net/gh${MANIFEST_PATH}`,
+  `https://gcore.jsdelivr.net/gh${MANIFEST_PATH}`,
+  `https://cdn.jsdelivr.net/gh${MANIFEST_PATH}`,
+]
+
+/** 首个候选地址；保留导出是因为旧代码与测试引用它 */
+export const UPDATE_MANIFEST_URL = UPDATE_MANIFEST_URLS[0]
 
 export type UpdateManifest = {
   /** 版本名，按点分段比较，如 0.1.2 */
@@ -104,6 +119,35 @@ export type CheckResult =
   | { status: 'throttled' }
 
 /**
+ * 逐个候选地址取清单，第一个成功解析的胜出。
+ * 每个地址单独计时，超时只影响它自己，不会把整次检查拖成 6 秒 × 个数。
+ */
+const fetchManifest = async (): Promise<UpdateManifest | null> => {
+  for (const url of UPDATE_MANIFEST_URLS) {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 6000)
+    try {
+      const response = await fetch(`${url}?t=${Date.now()}`, {
+        signal: controller.signal,
+        cache: 'no-store',
+      })
+      if (!response.ok) {
+        continue
+      }
+      const manifest = normalizeManifest(await response.json())
+      if (manifest) {
+        return manifest
+      }
+    } catch {
+      /* 这个源连不上或返回不是 JSON，换下一个 */
+    } finally {
+      clearTimeout(timer)
+    }
+  }
+  return null
+}
+
+/**
  * 取远端清单并判断是否需要提示。
  * force=false 时受 CHECK_INTERVAL 节流；失败只返回状态，由调用方决定要不要打扰用户。
  */
@@ -113,35 +157,19 @@ export const checkForUpdate = async ({ force = false } = {}): Promise<CheckResul
     return { status: 'throttled' }
   }
 
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), 6000)
-  try {
-    const response = await fetch(`${UPDATE_MANIFEST_URL}?t=${Date.now()}`, {
-      signal: controller.signal,
-      cache: 'no-store',
-    })
-    if (!response.ok) {
-      return { status: 'unreachable' }
-    }
-    const data: unknown = await response.json()
-    const manifest = normalizeManifest(data)
-    if (!manifest) {
-      return { status: 'unreachable' }
-    }
-    write(KEY_LAST_CHECK, String(Date.now()))
-    const current = currentVersion()
-    if (compareVersions(manifest.versionName, current) <= 0) {
-      return { status: 'latest' }
-    }
-    if (read(KEY_DISMISSED) === manifest.versionName) {
-      return { status: 'latest' }
-    }
-    return { status: 'newer', update: { ...manifest, current } }
-  } catch {
+  const manifest = await fetchManifest()
+  if (!manifest) {
     return { status: 'unreachable' }
-  } finally {
-    clearTimeout(timer)
   }
+  write(KEY_LAST_CHECK, String(Date.now()))
+  const current = currentVersion()
+  if (compareVersions(manifest.versionName, current) <= 0) {
+    return { status: 'latest' }
+  }
+  if (read(KEY_DISMISSED) === manifest.versionName) {
+    return { status: 'latest' }
+  }
+  return { status: 'newer', update: { ...manifest, current } }
 }
 
 /** 用户点了关闭：这个版本不再提示 */
