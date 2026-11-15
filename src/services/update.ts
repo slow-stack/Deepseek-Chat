@@ -18,6 +18,8 @@ export type UpdateManifest = {
   downloadUrl: string
   /** 可选：一句话说明这次更新了什么 */
   notes?: string
+  /** 可选：这次更新改了哪几条，弹窗逐条列出；没有就退回 notes */
+  highlights?: string[]
 }
 
 export type AvailableUpdate = UpdateManifest & { current: string }
@@ -68,12 +70,28 @@ export const compareVersions = (a: string, b: string) => {
   return 0
 }
 
-const isValidManifest = (value: unknown): value is UpdateManifest => {
+/** 清单校验 + 归一：highlights 只留非空字符串，字段缺失就当作没有 */
+const normalizeManifest = (value: unknown): UpdateManifest | null => {
   if (!value || typeof value !== 'object') {
-    return false
+    return null
   }
   const manifest = value as UpdateManifest
-  return typeof manifest.versionName === 'string' && typeof manifest.downloadUrl === 'string'
+  if (typeof manifest.versionName !== 'string' || typeof manifest.downloadUrl !== 'string') {
+    return null
+  }
+  const highlights = Array.isArray(manifest.highlights)
+    ? manifest.highlights.filter(
+        (item): item is string => typeof item === 'string' && item.trim() !== ''
+      )
+    : []
+  return {
+    versionName: manifest.versionName,
+    downloadUrl: manifest.downloadUrl,
+    ...(typeof manifest.notes === 'string' && manifest.notes.trim() !== ''
+      ? { notes: manifest.notes }
+      : {}),
+    ...(highlights.length > 0 ? { highlights } : {}),
+  }
 }
 
 export type CheckResult =
@@ -106,18 +124,19 @@ export const checkForUpdate = async ({ force = false } = {}): Promise<CheckResul
       return { status: 'unreachable' }
     }
     const data: unknown = await response.json()
-    if (!isValidManifest(data)) {
+    const manifest = normalizeManifest(data)
+    if (!manifest) {
       return { status: 'unreachable' }
     }
     write(KEY_LAST_CHECK, String(Date.now()))
     const current = currentVersion()
-    if (compareVersions(data.versionName, current) <= 0) {
+    if (compareVersions(manifest.versionName, current) <= 0) {
       return { status: 'latest' }
     }
-    if (read(KEY_DISMISSED) === data.versionName) {
+    if (read(KEY_DISMISSED) === manifest.versionName) {
       return { status: 'latest' }
     }
-    return { status: 'newer', update: { ...data, current } }
+    return { status: 'newer', update: { ...manifest, current } }
   } catch {
     return { status: 'unreachable' }
   } finally {
