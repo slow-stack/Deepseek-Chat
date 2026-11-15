@@ -1,6 +1,7 @@
 import clsx from 'clsx'
 import { useRef, useState, type ReactNode } from 'react'
 import {
+  IconBrainOutline16,
   IconDarkOutline16,
   IconDataOutline16,
   IconDownloadOutline16,
@@ -38,6 +39,7 @@ import { Button } from '../base/Button.js'
 import { Modal } from '../base/Modal.js'
 import { Select } from '../base/Select.js'
 import { showToast } from '../base/toastState.js'
+import { MemoryPanelContent } from '../memory/MemoryPanel.js'
 import { ApiKeyConfirm, ApiKeyField, useApiKeyEditor } from './ApiKeyField.js'
 import { closeSettings, useSettingsDialog, type SettingsSection } from './settingsDialogState.js'
 import styles from './Settings.module.css'
@@ -57,6 +59,7 @@ const sections: { value: SettingsSection; label: TranslationKey; icon: ReactNode
     label: 'settingDialogAsideGeneralOptionLabel',
     icon: <IconSettingsOutline16 />,
   },
+  { value: 'memory', label: 'settingDialogAsideMemoryOptionLabel', icon: <IconBrainOutline16 /> },
   { value: 'data', label: 'settingDialogAsideDataOptionLabel', icon: <IconDataOutline16 /> },
 ]
 
@@ -103,12 +106,16 @@ const SettingsContent = () => {
           {section === 'general' ? (
             <>
               <ThemeSetting />
-        <SkinSetting />
+              <SkinSetting />
               <LocaleSetting />
               <TtsVoiceSetting />
               <LocationSetting />
+              <UpdateSetting />
+            </>
+          ) : section === 'memory' ? (
+            <>
               <MemoryServiceSetting />
-                <UpdateSetting />
+              <MemoryPanelContent />
             </>
           ) : (
             <>

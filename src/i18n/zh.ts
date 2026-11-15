@@ -137,6 +137,7 @@ export const zh = {
   settingsLocationCity: '请选择市',
   settingsLocationRegion: '请选择国家或地区',
   settingDialogAsideGeneralOptionLabel: '通用设置',
+  settingDialogAsideMemoryOptionLabel: '记忆',
   settingDialogAsideDataOptionLabel: '数据管理',
   avatarMenuSettingsDialogThemeItemLabel: '主题',
   avatarMenuSettingsDialogThemeSelectLightOption: '浅色',
