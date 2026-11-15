@@ -202,6 +202,19 @@ export const IconNewChatOutline20 = () => (
   </svg>
 )
 
+export const IconArrowLeftOutline16 = () => (
+  <svg width={16} height={16} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M13 8H3.2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    <path
+      d="M7 4L3 8L7 12"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+)
+
 export const IconPanelLeftOutline16 = () => (
   <svg width={16} height={16} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path

@@ -1,7 +1,8 @@
 import clsx from 'clsx'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslate } from '../../i18n/index.js'
-import { IconPanelLeftOutline16, IconSettingsOutline16, NewChatIcon } from '../base/icons.js'
+import { isEmbedded, leaveHost } from '../../app/embedded.js'
+import { IconArrowLeftOutline16, IconPanelLeftOutline16, IconSettingsOutline16, NewChatIcon } from '../base/icons.js'
 import { setSiderCollapsed } from '../../services/settings.js'
 import { groupSessions } from '../../services/chat/sessionGroups.js'
 import { newChat, removeSession, useChatStore } from '../../services/chat/store.js'
@@ -52,7 +53,18 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
   return (
     <div className={clsx(styles.sider, mobile && styles.mobile)}>
       <div className={styles.top}>
-        <div className={styles.appName}>{t('appName')}</div>
+        <div className={styles.topLeft}>
+          {isEmbedded() ? (
+            <IconButton
+              size="m"
+              icon={<IconArrowLeftOutline16 />}
+              tooltip={t('backToHost')}
+              tooltipPlacement="bottom"
+              onClick={leaveHost}
+            />
+          ) : null}
+          <div className={styles.appName}>{t('appName')}</div>
+        </div>
         <IconButton
           size="m"
           icon={<IconPanelLeftOutline16 />}
