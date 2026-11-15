@@ -1,4 +1,5 @@
 import { useSettings } from '../settings.js'
+import { memoryServiceErrorOf } from './memoryEndpoint.js'
 import { listLocalMemories } from './memoryStore.js'
 import type { MemoryPage, MemoryQuery, MemoryRecord } from './memoryTypes.js'
 
@@ -65,7 +66,8 @@ export const loadMemories = async (query: MemoryQuery = {}): Promise<MemoryPage>
       cache: 'no-store',
     })
   } catch {
-    throw new Error('memory service unreachable')
+    // 区分「明文被设备拦下」与「服务真连不上」：前者用户要改地址，后者才是查服务
+    throw memoryServiceErrorOf(memoryServiceUrl)
   } finally {
     clearTimeout(timer)
   }

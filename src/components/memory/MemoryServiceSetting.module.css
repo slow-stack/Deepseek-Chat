@@ -45,6 +45,12 @@
   line-height: 20px;
 }
 
+.warn {
+  color: var(--dsw-alias-state-error-primary);
+  font-size: var(--dsw-alias-font-xs-13);
+  line-height: 20px;
+}
+
 .toggle {
   display: inline-flex;
   align-items: center;

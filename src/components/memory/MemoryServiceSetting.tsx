@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslate } from '../../i18n/index.js'
+import { isCleartextBlocked, isCleartextFailure } from '../../services/chat/memoryEndpoint.js'
 import { loadMemories } from '../../services/chat/memoryRead.js'
 import { countLocalMemories } from '../../services/chat/memoryStore.js'
 import { reindexMemories, resetVectors, vectorReady } from '../../services/chat/memoryVector.js'
@@ -58,8 +59,13 @@ export const MemoryServiceSetting = () => {
     try {
       await loadMemories({ limit: 1 })
       showToast({ key: 'memoryServiceReachable' })
-    } catch {
-      showToast({ key: 'memoryServiceUnreachable', type: 'error' })
+    } catch (error) {
+      // 明文被系统拦下时，说「服务坏了」会把人引向错误方向——直接告诉他换 https
+      if (isCleartextFailure(error)) {
+        showToast({ key: 'memoryServiceCleartextBlocked', type: 'error' })
+      } else {
+        showToast({ key: 'memoryServiceUnreachable', type: 'error' })
+      }
     } finally {
       setTesting(false)
     }
@@ -94,11 +100,14 @@ export const MemoryServiceSetting = () => {
             <input
               className={styles.input}
               defaultValue={url ?? ''}
-              placeholder="http://192.168.0.101:8790"
+              placeholder="https://memory.example.com"
               aria-label={t('memoryServiceUrlLabel')}
               onBlur={(event) => setMemoryServiceUrl(event.target.value)}
             />
             <span className={styles.hint}>{t('memoryServiceUrlHint')}</span>
+            {url && isCleartextBlocked(url) ? (
+              <span className={styles.warn}>{t('memoryServiceCleartextHint')}</span>
+            ) : null}
           </label>
           <label className={styles.field}>
             <span className={styles.label}>{t('memoryServiceTokenLabel')}</span>

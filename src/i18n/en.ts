@@ -31,6 +31,8 @@ export const en = {
   memoryPanelEmptyHint: 'Turn on Memory in a conversation and it lands here once you finish',
   memoryPanelFailed: 'Cannot read memory',
   memoryPanelFailedHint: 'Local storage may have been cleared, or the memory service did not answer',
+  memoryPanelCleartext: 'This address cannot be reached',
+  memoryPanelCleartextHint: 'This device blocks plain http. Use an https address instead.',
   memoryPanelOpenSettings: 'Open settings',
   memoryPanelTotal: '{count} in total',
   memoryPanelShownCount: '{count} shown',
@@ -42,7 +44,10 @@ export const en = {
   memoryServiceRemoteHint: 'Not needed by default. Open this only if you want memory kept in your own service.',
   memoryServiceUrlLabel: 'Service address',
   memoryServiceUrlHint:
-    'Leave empty to keep memory on this device; set it to use your own service, e.g. http://192.168.0.101:8790',
+    'Leave empty to keep memory on this device; set it to use your own service, e.g. https://memory.example.com',
+  memoryServiceCleartextHint:
+    'The app only reaches https: plain http is blocked by the device, including LAN addresses.',
+  memoryServiceCleartextBlocked: 'This device blocks plain http — use an https address',
   memoryServiceTokenLabel: 'Service token',
   memoryServiceTokenHint: 'Pairs with the address; only needed for your own service',
   memoryServiceTest: 'Test connection',

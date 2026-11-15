@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
 import { useTranslate } from '../../i18n/index.js'
+import { isCleartextFailure } from '../../services/chat/memoryEndpoint.js'
 import { loadMemories, type MemoryQuery, type MemoryRecord } from '../../services/chat/memoryRead.js'
 import { searchByVector, vectorReady } from '../../services/chat/memoryVector.js'
 import {
@@ -24,7 +25,7 @@ const RECENT_MS = RECENT_DAYS * 24 * 60 * 60 * 1000
 type PanelState =
   | { kind: 'loading' }
   | { kind: 'ready'; items: MemoryRecord[]; total: number | null; mode: string | null }
-  | { kind: 'failed' }
+  | { kind: 'failed'; cleartext: boolean }
 
 type Stats = { total: number; digest: number; recent: number }
 
@@ -116,11 +117,12 @@ export const MemoryBrowser = ({
         }
         setState({ kind: 'ready', items: page.items, total: page.total, mode: page.mode })
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         if (id !== requestId.current) {
           return
         }
-        setState({ kind: 'failed' })
+        // 明文被设备拦下时不说「读不到」，那是另一件事
+        setState({ kind: 'failed', cleartext: isCleartextFailure(error) })
       })
   }, [query, refreshKey])
 
@@ -151,8 +153,12 @@ export const MemoryBrowser = ({
   const hint =
     state.kind === 'failed' ? (
       <div className={styles.notice}>
-        <div className={styles.noticeTitle}>{t('memoryPanelFailed')}</div>
-        <div className={styles.noticeBody}>{t('memoryPanelFailedHint')}</div>
+        <div className={styles.noticeTitle}>
+          {t(state.cleartext ? 'memoryPanelCleartext' : 'memoryPanelFailed')}
+        </div>
+        <div className={styles.noticeBody}>
+          {t(state.cleartext ? 'memoryPanelCleartextHint' : 'memoryPanelFailedHint')}
+        </div>
         <Button variant="outlined" size="m" onClick={() => openSettings('plugins')}>
           {t('memoryPanelOpenSettings')}
         </Button>
