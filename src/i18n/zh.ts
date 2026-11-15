@@ -314,6 +314,13 @@ export const zh = {
   historyImported: '已导入 {count} 个对话',
   historyImportFailed:
     '文件导入失败，可能是文件格式错误或使用了旧版的对话导出 ZIP 文件，请前往 DeepSeek 重新导出历史对话文件后再次导入。',
+  historyImportReading: '正在导入历史对话',
+  historyImportCommitting: '正在写入本地',
+  historyImportCount: '{done} / {total} · {percent}%',
+  historyImportCounting: '正在读取文件…',
+  historyImportKeepOpen: '可以切到别的页面，导入会继续跑。',
+  historyImportCancel: '取消',
+  historyImportCancelled: '已取消导入，原来的对话没有被改动。',
   historyExportFailed: '导出失败：{message}',
   exportAllLabel: '导出所有历史对话',
   historyExportDescription:

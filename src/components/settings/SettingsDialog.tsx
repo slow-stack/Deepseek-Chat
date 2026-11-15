@@ -22,7 +22,7 @@ import {
 import { currentVersion } from '../../services/update.js'
 import { runUpdateCheck, useUpdateBanner } from '../sider/updateBannerState.js'
 import { useIsMobile } from '../../app/viewport.js'
-import { useChatStore } from '../../services/chat/store.js'
+import { isHistoryImportAborted, useChatStore } from '../../services/chat/store.js'
 import { regionCodes, getRegionName, provinces } from '../../services/location.js'
 import {
   isChineseBrowser,
@@ -657,8 +657,13 @@ const useHistoryImport = () => {
     try {
       const count = await importHistory(file)
       setStatus({ key: count === 1 ? 'historyImportedOne' : 'historyImported', params: { count } })
-    } catch {
-      setStatus({ key: 'historyImportFailed', error: true })
+    } catch (error) {
+      // 用户自己按了取消不算失败，别把它报成导入错误。
+      setStatus(
+        isHistoryImportAborted(error)
+          ? { key: 'historyImportCancelled' }
+          : { key: 'historyImportFailed', error: true }
+      )
     } finally {
       importing.current = false
       setBusy(false)

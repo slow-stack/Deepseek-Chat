@@ -47,7 +47,8 @@ export const importHistory = (file: File): Promise<number> =>
   enqueueBackup(async () => {
     const { checkArchiveFormat, importArchive } = await import('./history/importArchive.js')
     await checkArchiveFormat(file)
-    return replaceHistory(() => importArchive(file))
+    // 取消信号由 replaceHistory 统一持有，这里透传下去，逐条目循环会自己停下。
+    return replaceHistory((onProgress, signal) => importArchive(file, onProgress, signal))
   })
 
 /** 确认删除后调用：以空历史原子替换全部本地会话与附件，保留 API Key 和其他设置。 */

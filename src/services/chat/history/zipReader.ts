@@ -164,23 +164,26 @@ const readDirectory = async (file: File): Promise<{ entries: Entry[]; offset: nu
   }
   const entries: Entry[] = []
   const paths = new Set<string>()
+  // 整张中央目录一次读完：条目上千时逐条 3 次 slice 会产生上万次异步小读，
+  // 在真机上是导入过程中最长的一段静默（6000 条目要 30 秒以上）。
+  const directory = await readBytes(file, offset, size)
+  const directoryView = viewOf(directory)
   let cursor = 0
   for (let index = 0; index < count; index++) {
     if (cursor + 46 > size) {
       invalid()
     }
-    const view = viewOf(await readBytes(file, offset + cursor, 46))
-    if (view.getUint32(0, true) !== 0x02014b50) {
+    if (directoryView.getUint32(cursor, true) !== 0x02014b50) {
       invalid()
     }
-    const flags = view.getUint16(8, true)
-    const method = view.getUint16(10, true)
-    const compressedSize = view.getUint32(20, true)
-    const entrySize = view.getUint32(24, true)
-    const nameLength = view.getUint16(28, true)
-    const extraLength = view.getUint16(30, true)
-    const next = cursor + 46 + nameLength + extraLength + view.getUint16(32, true)
-    const entryOffset = view.getUint32(42, true)
+    const flags = directoryView.getUint16(cursor + 8, true)
+    const method = directoryView.getUint16(cursor + 10, true)
+    const compressedSize = directoryView.getUint32(cursor + 20, true)
+    const entrySize = directoryView.getUint32(cursor + 24, true)
+    const nameLength = directoryView.getUint16(cursor + 28, true)
+    const extraLength = directoryView.getUint16(cursor + 30, true)
+    const next = cursor + 46 + nameLength + extraLength + directoryView.getUint16(cursor + 32, true)
+    const entryOffset = directoryView.getUint32(cursor + 42, true)
     // 只允许 deflate 选项、data descriptor 与 UTF-8 标志。
     if (
       flags & ~0x80e ||
@@ -189,13 +192,13 @@ const readDirectory = async (file: File): Promise<{ entries: Entry[]; offset: nu
       entrySize === 0xffffffff ||
       (method === 0 && compressedSize !== entrySize) ||
       entryOffset >= offset ||
-      view.getUint16(34, true) !== 0 ||
-      ((view.getUint32(38, true) >>> 16) & 0xf000) === 0xa000 ||
+      directoryView.getUint16(cursor + 34, true) !== 0 ||
+      ((directoryView.getUint32(cursor + 38, true) >>> 16) & 0xf000) === 0xa000 ||
       next > size
     ) {
       invalid()
     }
-    const name = await readBytes(file, offset + cursor + 46, nameLength)
+    const name = directory.slice(cursor + 46, cursor + 46 + nameLength)
     const path = decodePath(name, flags)
     // 目录和同名文件也不能互相覆盖。
     const identity = path.endsWith('/') ? path.slice(0, -1) : path
@@ -203,13 +206,13 @@ const readDirectory = async (file: File): Promise<{ entries: Entry[]; offset: nu
       invalid()
     }
     paths.add(identity)
-    checkExtra(await readBytes(file, offset + cursor + 46 + nameLength, extraLength))
+    checkExtra(directory.subarray(cursor + 46 + nameLength, cursor + 46 + nameLength + extraLength))
     entries.push({
       path,
       name,
       flags,
       method,
-      crc: view.getUint32(16, true),
+      crc: directoryView.getUint32(cursor + 16, true),
       compressedSize,
       size: entrySize,
       offset: entryOffset,
@@ -250,6 +253,7 @@ const readEntryOffset = async (file: File, entry: Entry, boundary: number) => {
       invalid()
     }
   }
+  // 文件名与 extra 一次读完，别合成两次小读。
   const metadata = await readBytes(file, entry.offset + 30, nameLength + extraLength)
   if (entry.name.some((byte, index) => byte !== metadata[index])) {
     invalid()
@@ -283,9 +287,16 @@ export type ArchiveEntry = {
  * 按条目在文件中的物理顺序逐条、逐块解压，跳过目录条目。
  * 调用方必须消费完当前条目的数据，再请求下一个条目。
  */
-export async function* readArchive(file: File): AsyncGenerator<ArchiveEntry> {
+export async function* readArchive(
+  file: File,
+  onTotal?: (total: number) => void,
+  signal?: AbortSignal
+): AsyncGenerator<ArchiveEntry> {
   const directory = await readDirectory(file)
+  // 目录表一次读完，条目总数在第一条产出前就知道；目录条目不算进度。
+  onTotal?.(directory.entries.filter((entry) => !entry.path.endsWith('/')).length)
   for (const [index, entry] of directory.entries.entries()) {
+    signal?.throwIfAborted()
     const boundary = directory.entries[index + 1]?.offset ?? directory.offset
     const start = await readEntryOffset(file, entry, boundary)
     if (entry.path.endsWith('/')) {
@@ -309,6 +320,7 @@ export async function* readArchive(file: File): AsyncGenerator<ArchiveEntry> {
       }
       const inflate = entry.method === 8 ? new Inflate(append) : null
       for (let offset = 0; offset < entry.compressedSize; offset += READ_CHUNK_BYTES) {
+        signal?.throwIfAborted()
         const chunk = await readBytes(
           file,
           start + offset,
