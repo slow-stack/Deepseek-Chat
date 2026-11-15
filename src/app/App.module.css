@@ -3,7 +3,17 @@
   inset: 0;
   display: flex;
   overflow: hidden;
-  background-color: var(--dsw-alias-bg-base);
+  background:
+    radial-gradient(
+      120% 70% at 50% -20%,
+      color-mix(in srgb, var(--dsw-alias-brand-primary) 5%, transparent),
+      transparent 62%
+    ),
+    var(--dsw-alias-bg-base);
+}
+
+:global(html[data-embedded='true']) .frame {
+  padding-top: 44px;
 }
 
 .main {

@@ -27,6 +27,11 @@ window.__ModuleLoader__.load({
     const FALLBACK_URL = 'http://127.0.0.1:8096/'
     let iframeUrl = FALLBACK_URL
     let statusKnown = false
+    // iframe 里点了「返回对话」就发一条消息回来，由这里把它换成宿主的「回到会话」。
+    // 宿主没有 closePanel 之类的东西：把 activePanelId 置回 null 就是回到会话
+    // （dsh-client-ui-layout 的 LayoutController.selectPanel 注释原话：Select a global panel or return to the Conversation）。
+    const LEAVE_MESSAGE = 'dsh-chat-demo:leave'
+    let leave = null
 
     // 宿主那条 /api/dsh-chat-demo/status 只报「服务在不在、端口多少」，
     // 拉一次把面板的地址对齐到真正在跑的那台。
@@ -78,8 +83,19 @@ window.__ModuleLoader__.load({
     ].join('')
 
     function Panel() {
+      const frameRef = React.useRef(null)
       React.useEffect(() => {
         refreshStatus()
+        // 只认自己那个 iframe 发来的「返回」信号：宿主窗口里还跑着别的消息，
+        // 不校验来源的话任何一个页面 postMessage 都能把面板顶掉。
+        const onMessage = (event) => {
+          const frame = frameRef.current
+          if (frame && event.source !== frame.contentWindow) return
+          const data = event && event.data
+          if (data && typeof data === 'object' && data.type === LEAVE_MESSAGE && leave) leave()
+        }
+        window.addEventListener('message', onMessage)
+        return () => window.removeEventListener('message', onMessage)
       }, [])
       return h(
         'div',
@@ -87,6 +103,7 @@ window.__ModuleLoader__.load({
         h('style', { key: 'css' }, CSS),
         h('iframe', {
           key: 'frame',
+          ref: frameRef,
           className: 'dsh-chat-demo-frame',
           src: iframeUrl,
           title: 'Deepseek Chat',
@@ -104,8 +121,32 @@ window.__ModuleLoader__.load({
         return
       }
       const layout = (ctx.get && ctx.get('layout')) || ctx.layout || null
+      const canSelect = !!layout && typeof layout.selectPanel === 'function'
+      // 当前主面板是谁。宿主没暴露这个读取口时返回 null，入口退化成「只会进」。
+      const activePanelId = () => {
+        try {
+          const info = layout && layout.panelInfo && layout.panelInfo.getSnapshot
+            ? layout.panelInfo.getSnapshot()
+            : null
+          return info ? info.activePanelId ?? null : null
+        } catch {
+          return null
+        }
+      }
+      // 入口是个开关：已经在面板里就回会话，否则进面板。桉桉 2026-11-15 原话
+      // 「进去了没出来的入口啊」——同一个入口点回去，是最省事的出口。
       const open = () => {
-        if (layout && typeof layout.selectPanel === 'function') layout.selectPanel(PANEL_ID)
+        if (!canSelect) return
+        if (activePanelId() === PANEL_ID) layout.selectPanel(null)
+        else layout.selectPanel(PANEL_ID)
+      }
+      leave = () => {
+        if (!canSelect) return
+        try {
+          layout.selectPanel(null)
+        } catch {
+          /* 目标面板标不存在时宿主会抛，忽略即可 */
+        }
       }
 
       // 底部常驻入口。footer.action 是 list 插槽，宿主只传 { wide }；

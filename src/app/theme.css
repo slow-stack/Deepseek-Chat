@@ -2,6 +2,10 @@
   --dsw-font-family:
     system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell,
     'Open Sans', 'Helvetica Neue', sans-serif;
+  --ds-font-display: var(--dsw-font-family);
+  /* classic 皮肤用官方蓝白；paper 皮肤在下面的 body[data-skin='paper'] 里整块覆盖 */
+  --ds-ink: var(--dsw-alias-button-primary-fill);
+  --ds-paper: #ffffff;
   font-variant-ligatures: no-contextual;
 }
 
@@ -250,4 +254,99 @@ body {
   --dsw-font-s-strong-14: 500 14px/22px var(--dsw-font-family);
 
   --dsw-font-xs-13: 13px/20px var(--dsw-font-family);
+}
+
+/* ---------------------------------------------------------------------------
+ * 皮肤层（paper）：把默认的白底蓝调换成「纸张 + 墨」的暖中性色。
+ * 只覆盖 alias / specific 令牌，组件不动；深色另给一套。
+ * 整段挂在 body[data-skin='paper'] 下，切回 classic 时这些令牌全部失效、
+ * 走文件前半段的官方令牌，等于原样还原。
+ * ------------------------------------------------------------------------- */
+body[data-skin='paper'] {
+  --ds-ink: #201f1b;
+  --ds-paper: #faf9f6;
+  --ds-paper-raised: #fffdf9;
+  --ds-font-display: 'Songti SC', 'Noto Serif SC', 'Source Han Serif SC', 'SimSun', serif;
+
+  --dsw-alias-bg-base: var(--ds-paper);
+  --dsw-alias-bg-layer-2: var(--ds-paper-raised);
+  --dsw-alias-bg-layer-3: #ffffff;
+  --dsw-alias-bg-skeleton: rgba(32, 31, 27, 0.05);
+
+  --dsw-alias-border-l1: rgba(32, 31, 27, 0.07);
+  --dsw-alias-border-l2: rgba(32, 31, 27, 0.11);
+  --dsw-alias-border-l2-darkmode-thin: rgba(32, 31, 27, 0.11);
+  --dsw-alias-border-l3: rgba(32, 31, 27, 0.16);
+
+  --dsw-alias-label-primary: #23221e;
+  --dsw-alias-label-secondary: #5a574e;
+  --dsw-alias-label-tertiary: #857f73;
+  --dsw-alias-label-caption: #a39c8e;
+  --dsw-alias-label-dimmed: #d7d2c6;
+
+  --dsw-alias-brand-primary: #2f5be6;
+  --dsw-alias-brand-primary-invert: #2f5be6;
+  --dsw-alias-brand-text: #2f5be6;
+  --dsw-alias-button-primary-fill: #2f5be6;
+  --dsw-alias-button-primary-hover: #2449c4;
+
+  --dsw-alias-interactive-bg-hover: rgba(32, 31, 27, 0.05);
+  --dsw-alias-interactive-bg-active: rgba(32, 31, 27, 0.09);
+  --dsw-alias-interactive-bg-hover-accent: rgba(32, 31, 27, 0.12);
+
+  --dsw-specific-bubble: #f0ede4;
+  --dsw-specific-input-major: #fffdfa;
+  --dsw-specific-sidebar-fill: #f3f1ea;
+  --dsw-specific-sidebar-nav-item-hover: rgba(32, 31, 27, 0.055);
+  --dsw-specific-sidebar-nav-item-active-accent: #e9e4d6;
+
+  --dsw-alias-markdown-inline-code: #f0ede4;
+  --dsw-alias-markdown-code-block: #f6f4ee;
+  --dsw-alias-markdown-code-block-banner: #efebe1;
+  --dsw-alias-markdown-tag: #f0ede4;
+  --dsw-alias-markdown-citation: #f3efe5;
+}
+
+body[data-skin='paper'][data-ds-dark-theme] {
+  --ds-ink: #e8e4da;
+  --ds-paper: #131315;
+  --ds-paper-raised: #1a1a1d;
+
+  --dsw-alias-bg-base: var(--ds-paper);
+  --dsw-alias-bg-layer-2: var(--ds-paper-raised);
+  --dsw-alias-bg-layer-3: #202024;
+  --dsw-alias-bg-skeleton: rgba(255, 255, 255, 0.07);
+
+  --dsw-alias-border-l1: rgba(255, 255, 255, 0.07);
+  --dsw-alias-border-l2: rgba(255, 255, 255, 0.11);
+  --dsw-alias-border-l2-darkmode-thin: rgba(255, 255, 255, 0.09);
+  --dsw-alias-border-l3: rgba(255, 255, 255, 0.16);
+
+  --dsw-alias-label-primary: #edeee6;
+  --dsw-alias-label-secondary: #a9a49a;
+  --dsw-alias-label-tertiary: #8b8578;
+  --dsw-alias-label-caption: #6e695f;
+  --dsw-alias-label-dimmed: #3a3a40;
+
+  --dsw-alias-brand-primary: #7c93ff;
+  --dsw-alias-brand-primary-invert: #9aa9ff;
+  --dsw-alias-brand-text: #9aa9ff;
+  --dsw-alias-button-primary-fill: #4c66e8;
+  --dsw-alias-button-primary-hover: #5c76f2;
+
+  --dsw-alias-interactive-bg-hover: rgba(255, 255, 255, 0.07);
+  --dsw-alias-interactive-bg-active: rgba(255, 255, 255, 0.12);
+  --dsw-alias-interactive-bg-hover-accent: rgba(255, 255, 255, 0.2);
+
+  --dsw-specific-bubble: #24242a;
+  --dsw-specific-input-major: #1e1e22;
+  --dsw-specific-sidebar-fill: #17171a;
+  --dsw-specific-sidebar-nav-item-hover: rgba(255, 255, 255, 0.06);
+  --dsw-specific-sidebar-nav-item-active-accent: #2a2a31;
+
+  --dsw-alias-markdown-inline-code: #24242a;
+  --dsw-alias-markdown-code-block: #1b1b1f;
+  --dsw-alias-markdown-code-block-banner: #1f1f24;
+  --dsw-alias-markdown-tag: #23232a;
+  --dsw-alias-markdown-citation: #23232a;
 }
