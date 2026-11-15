@@ -26,6 +26,7 @@ import { closeMobileSider } from '../components/sider/mobileSiderState.js'
 import { MobileSider, Sider } from '../components/sider/Sider.js'
 import { UpdateDialog } from '../components/sider/UpdateDialog.js'
 import { runUpdateCheck } from '../components/sider/updateBannerState.js'
+import { autoDigest } from '../services/chat/memoryDigest.js'
 import { useEnabledPlugins } from '../plugins/registry.js'
 import { openChatPage, useAppPage } from './pageState.js'
 import styles from './App.module.css'
@@ -101,6 +102,15 @@ export const App = () => {
   useEffect(() => {
     void runUpdateCheck()
   }, [])
+
+  // 打开应用时补一段自动整理：导入过的会话不能永远躺在列表里等人按按钮。
+  // 等 chat 初始化完再跑——它要读会话表；跑在后台，失败也不弹窗。
+  useEffect(() => {
+    if (!ready) {
+      return
+    }
+    void autoDigest().catch(() => {})
+  }, [ready])
 
   return (
     <>

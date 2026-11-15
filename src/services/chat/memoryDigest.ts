@@ -1,7 +1,7 @@
 import { streamMessage } from '../api/client.js'
 import { modelFor } from '../api/endpoints.js'
 import type { ChatModel, MessageParam } from '../api/types.js'
-import { useSettings } from '../settings.js'
+import { lastAutoDigestAt, markAutoDigestAt, useSettings } from '../settings.js'
 import { getVisibleMessages } from './branches.js'
 import { estimateTokens } from './compaction.js'
 import * as db from './db.js'
@@ -183,4 +183,46 @@ export const digestSessions = async (
   progress.current = null
   onProgress({ ...progress })
   return outcome
+}
+
+/**
+ * 打开应用时顺手补一段：把上次整理之后还没做过的会话沉淀成记忆。
+ *
+ * 为什么要有它：导入几百条历史会话之后，用户不会记得回来按「整理历史会话」，
+ * 那些会话就一直只是干躺在列表里，记忆库看起来永远像空的。
+ *
+ * 三条闸门，缺一不可：插件开着、自动整理开关开着、距上次够久。
+ * 一次最多做 memoryAutoDigestBatch 条——它跑在后台，不能一口气烧掉一大笔。
+ * 没密钥、没待整理的会话都直接返回，一次请求都不发。
+ */
+export type AutoDigestResult = { ran: boolean; saved: number; skipped: number; failed: number }
+
+export const autoDigest = async (): Promise<AutoDigestResult> => {
+  const state = useSettings.getState()
+  const idle: AutoDigestResult = { ran: false, saved: 0, skipped: 0, failed: 0 }
+  if (!state.memoryPluginEnabled || !state.memoryAutoDigest || !state.apiKey) {
+    return idle
+  }
+  const last = lastAutoDigestAt()
+  const gap = state.memoryAutoDigestHours * 60 * 60 * 1000
+  if (last > 0 && Date.now() - last < gap) {
+    return idle
+  }
+  const pending = await listDigestPending()
+  if (pending.length === 0) {
+    // 没有新东西也记一次时间：免得每次开应用都去扫一遍会话表
+    markAutoDigestAt(Date.now())
+    return idle
+  }
+  const batch = pending.slice(0, state.memoryAutoDigestBatch)
+  const controller = new AbortController()
+  const outcome = await digestSessions(batch, controller.signal, () => {})
+  // 记在跑完之后：中途关掉应用的话下次还会补，不会漏
+  markAutoDigestAt(Date.now())
+  return {
+    ran: true,
+    saved: outcome.saved,
+    skipped: outcome.skipped,
+    failed: outcome.failed,
+  }
 }

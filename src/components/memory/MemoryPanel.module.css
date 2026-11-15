@@ -24,6 +24,22 @@
   margin: 12px 0 14px;
 }
 
+/* 统计行：一句话说清库里现在有多少、沉淀了多少、最近还在长 */
+.stats {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: var(--dsw-alias-font-xs-13);
+  line-height: 20px;
+}
+
+.statDivider {
+  color: var(--dsw-alias-label-tertiary);
+}
+
 .searchInput {
   box-sizing: border-box;
   width: 100%;

@@ -51,6 +51,20 @@ type Settings = {
   memoryServiceUrl: string | null
   /** 记忆服务 token；只有自己填了地址时才用得上 */
   memoryServiceToken: string | null
+  /** 打开应用时自动把没整理过的会话沉淀成记忆 */
+  memoryAutoDigest: boolean
+  /** 两次自动整理之间至少隔多少小时 */
+  memoryAutoDigestHours: number
+  /** 一次自动整理最多做几条，免得一次烧太多 */
+  memoryAutoDigestBatch: number
+  /** 用向量模型搜记忆；关掉时是字面匹配 */
+  memoryVectorEnabled: boolean
+  /** 向量模型的地址，例如 https://api.openai.com/v1 */
+  memoryVectorBaseUrl: string
+  /** 向量模型名，例如 text-embedding-3-small */
+  memoryVectorModel: string
+  /** 向量模型的密钥 */
+  memoryVectorApiKey: string
   /** 分能力接口：把对话、摘要、语音拆到不同服务上去 */
   endpoints: EndpointSettings
 }
@@ -71,6 +85,15 @@ const KEYS = {
   memoryServiceUrl: 'chat-demo:memory-service-url',
   memoryServiceToken: 'chat-demo:memory-service-token',
   memoryPluginEnabled: 'chat-demo:memory-plugin-enabled',
+  memoryAutoDigest: 'chat-demo:memory-auto-digest',
+  memoryAutoDigestHours: 'chat-demo:memory-auto-digest-hours',
+  memoryAutoDigestBatch: 'chat-demo:memory-auto-digest-batch',
+  memoryVectorEnabled: 'chat-demo:memory-vector-enabled',
+  memoryVectorBaseUrl: 'chat-demo:memory-vector-base-url',
+  memoryVectorModel: 'chat-demo:memory-vector-model',
+  memoryVectorApiKey: 'chat-demo:memory-vector-api-key',
+  /** 上次自动整理跑完的时间，毫秒数；节流用，不算用户设置但一起存 */
+  memoryAutoDigestAt: 'chat-demo:memory-auto-digest-at',
   endpoints: 'chat-demo:endpoints',
 } as const
 
@@ -194,6 +217,14 @@ export const useSettings = create<Settings>(() => ({
   memoryPluginEnabled: initialMemoryPluginEnabled(),
   memoryServiceUrl: read(KEYS.memoryServiceUrl),
   memoryServiceToken: read(KEYS.memoryServiceToken),
+  // 自动整理默认开着：装上就该自己把旧会话收进记忆，不需要用户先学会按按钮
+  memoryAutoDigest: read(KEYS.memoryAutoDigest) !== 'false',
+  memoryAutoDigestHours: readNumber(KEYS.memoryAutoDigestHours, 6, 1, 72),
+  memoryAutoDigestBatch: readNumber(KEYS.memoryAutoDigestBatch, 5, 1, 20),
+  memoryVectorEnabled: read(KEYS.memoryVectorEnabled) === 'true',
+  memoryVectorBaseUrl: read(KEYS.memoryVectorBaseUrl) ?? '',
+  memoryVectorModel: read(KEYS.memoryVectorModel) ?? '',
+  memoryVectorApiKey: read(KEYS.memoryVectorApiKey) ?? '',
   endpoints: initialEndpoints(),
 }))
 
@@ -278,6 +309,61 @@ export const setMemoryServiceToken = (value: string | null) => {
 export const setMemoryPluginEnabled = (memoryPluginEnabled: boolean) => {
   write(KEYS.memoryPluginEnabled, String(memoryPluginEnabled))
   useSettings.setState({ memoryPluginEnabled })
+}
+
+export const setMemoryAutoDigest = (memoryAutoDigest: boolean) => {
+  write(KEYS.memoryAutoDigest, String(memoryAutoDigest))
+  useSettings.setState({ memoryAutoDigest })
+}
+
+export const setMemoryAutoDigestHours = (value: number) => {
+  const memoryAutoDigestHours = Math.min(72, Math.max(1, Math.round(value)))
+  write(KEYS.memoryAutoDigestHours, String(memoryAutoDigestHours))
+  useSettings.setState({ memoryAutoDigestHours })
+}
+
+export const setMemoryAutoDigestBatch = (value: number) => {
+  const memoryAutoDigestBatch = Math.min(20, Math.max(1, Math.round(value)))
+  write(KEYS.memoryAutoDigestBatch, String(memoryAutoDigestBatch))
+  useSettings.setState({ memoryAutoDigestBatch })
+}
+
+/** 向量检索默认关着：不填地址就等于没有它，不能影响开箱即用 */
+export const setMemoryVectorEnabled = (memoryVectorEnabled: boolean) => {
+  write(KEYS.memoryVectorEnabled, String(memoryVectorEnabled))
+  useSettings.setState({ memoryVectorEnabled })
+}
+
+const writeText = (key: string, value: string | null) => {
+  write(key, value?.trim() || null)
+}
+
+export const setMemoryVectorBaseUrl = (value: string) => {
+  const memoryVectorBaseUrl = value.trim().replace(/\/+$/, '')
+  writeText(KEYS.memoryVectorBaseUrl, memoryVectorBaseUrl)
+  useSettings.setState({ memoryVectorBaseUrl })
+}
+
+export const setMemoryVectorModel = (value: string) => {
+  const memoryVectorModel = value.trim()
+  writeText(KEYS.memoryVectorModel, memoryVectorModel)
+  useSettings.setState({ memoryVectorModel })
+}
+
+export const setMemoryVectorApiKey = (value: string) => {
+  const memoryVectorApiKey = value.trim()
+  writeText(KEYS.memoryVectorApiKey, memoryVectorApiKey)
+  useSettings.setState({ memoryVectorApiKey })
+}
+
+/** 上一次自动整理跑到什么时候；这不是用户设置，单独存取，不放 store 里免得每次写都触发重渲染 */
+export const lastAutoDigestAt = (): number => {
+  const value = Number(read(KEYS.memoryAutoDigestAt))
+  return Number.isFinite(value) && value > 0 ? value : 0
+}
+
+export const markAutoDigestAt = (time: number) => {
+  write(KEYS.memoryAutoDigestAt, String(time))
 }
 
 /**
