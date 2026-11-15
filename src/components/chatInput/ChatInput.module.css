@@ -16,9 +16,11 @@
     border-color 0.18s ease,
     box-shadow 0.18s ease;
 
+  /* 聚焦环用品牌蓝，不用 label-primary：后者在暗色下接近白色，
+     6% 铺开就是一圈发白的边，夜里看很刺眼。 */
   &:focus-within {
-    border-color: color-mix(in srgb, var(--dsw-alias-label-primary) 22%, transparent);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--dsw-alias-label-primary) 6%, transparent);
+    border-color: color-mix(in srgb, var(--dsw-alias-brand-primary) 42%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--dsw-alias-brand-primary) 10%, transparent);
   }
 }
 
@@ -302,6 +304,14 @@
     &:hover {
       background-color: var(--dsw-alias-button-ghost-active-hover);
     }
+  }
+
+  /* 记忆关掉时只留图标：方形按钮，颜色压暗，靠 tooltip 说明。
+     不写字就不会一直占着半行提醒「已关闭」。 */
+  &.iconOnly {
+    width: 34px;
+    padding: 0;
+    color: var(--dsw-alias-label-caption);
   }
 }
 

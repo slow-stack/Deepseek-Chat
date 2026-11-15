@@ -178,7 +178,7 @@ export const ProjectList = ({
                       key={session.id}
                       session={session}
                       active={session.id === activeId}
-                      onDelete={() => onDelete(session)}
+                      onDelete={onDelete}
                     />
                   ))
                 : null}

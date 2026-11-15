@@ -81,17 +81,16 @@ export const MessageList = ({
   const stickyRef = useRef(true)
   const scrollTopRef = useRef(0)
   const restoreScrollRef = useRef<{ messageId: string; top: number } | null>(null)
-  const messages = getVisibleMessages(session)
-  const [previousVersions, setPreviousVersions] = useState(() =>
-    buildMessageVersions(session, new Map())
-  )
-  const versions = useMemo(
-    () => buildMessageVersions(session, previousVersions),
-    [session, previousVersions]
-  )
-  if (versions !== previousVersions) {
-    setPreviousVersions(versions)
-  }
+  // 可见消息每次渲染都走一遍分支链，会话长时是白跑的；只在会话对象变化时重算。
+  const messages = useMemo(() => getVisibleMessages(session), [session])
+  // 版本表要在多次渲染之间传递，放 ref 里算完即更新：
+  // 原来用「渲染期 setState」传递，会让每次会话更新都多跑一整轮渲染。
+  const versionsRef = useRef<ReadonlyMap<string, MessageVersions>>(new Map())
+  const versions = useMemo(() => {
+    const next = buildMessageVersions(session, versionsRef.current)
+    versionsRef.current = next
+    return next
+  }, [session])
   const lastMessageId = messages.at(-1)?.id
   const scrollToBottom = useCallback(() => {
     const el = scrollRef.current

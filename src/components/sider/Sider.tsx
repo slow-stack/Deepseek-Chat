@@ -140,7 +140,7 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
                     key={session.id}
                     session={session}
                     active={session.id === activeId}
-                    onDelete={() => setDeleting(session)}
+                    onDelete={setDeleting}
                   />
                 ))}
               </div>
@@ -158,7 +158,7 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
                       key={session.id}
                       session={session}
                       active={session.id === activeId}
-                      onDelete={() => setDeleting(session)}
+                      onDelete={setDeleting}
                     />
                   ))}
                 </div>

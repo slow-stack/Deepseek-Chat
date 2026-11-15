@@ -9,11 +9,13 @@ import {
 } from '../base/icons.js'
 import {
   moveSessionToProject,
+  prefetchSession,
   renameSession,
   selectSession,
   useChatStore,
 } from '../../services/chat/store.js'
 import type { SessionSummary } from '../../services/chat/types.js'
+import { openChatPage } from '../../app/pageState.js'
 import { IconButton } from '../base/IconButton.js'
 import { Menu, type MenuOption } from '../base/Menu.js'
 import { closeMobileSider } from './mobileSiderState.js'
@@ -26,7 +28,8 @@ export const SessionItem = memo(function SessionItem({
 }: {
   session: SessionSummary
   active: boolean
-  onDelete: () => void
+  /** 收整个 session：调用方才能直接传稳定函数，不必每行新建闭包 */
+  onDelete: (session: SessionSummary) => void
 }) {
   const t = useTranslate()
   const [editing, setEditing] = useState(false)
@@ -90,15 +93,21 @@ export const SessionItem = memo(function SessionItem({
       label: t('delete'),
       icon: <IconTrashOutline16 />,
       danger: true,
-      onSelect: onDelete,
+      onSelect: () => onDelete(session),
     },
   ]
 
   return (
     <div
       className={clsx(styles.item, active && styles.active)}
+      // 悬停/按下先热一遍缓存，点下去时就不用等 IndexedDB 读盘
+      onPointerEnter={() => prefetchSession(session.id)}
+      onPointerDown={() => prefetchSession(session.id)}
       onClick={() => {
         selectSession(session.id)
+        // 显式回对话页：光靠 activeId 变化驱动不够——在记忆页点回当前这条会话时
+        // activeId 没变，effect 不触发，人就卡在插件页出不去。
+        openChatPage()
         closeMobileSider()
       }}
     >
