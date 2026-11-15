@@ -16,6 +16,10 @@ export const en = {
   settings: 'Settings',
   appName: 'Deepseek Chat',
   backToHost: 'Back to DSH chat',
+  memoryOn: 'Memory',
+  memoryOff: 'Memory off',
+  memoryOnHint: 'This conversation feeds memory. Click to turn it off — it will never be stored',
+  memoryOffHint: 'This conversation is never stored to memory and pulls nothing in. Click to turn it back on',
   deleteSessionModalContentTitle: 'Delete chat?',
   deleteSessionWithFilesDescription:
     'This chat and its uploaded files will be permanently deleted and cannot be recovered. Delete this chat?',

@@ -11,3 +11,6 @@ build/
 tmp/
 
 *.bak-diag-*
+
+# local verification screenshots
+.shots/

@@ -478,6 +478,27 @@ export const renameSession = (id: string, title: string) => {
 }
 
 /**
+ * 会话级记忆开关。关掉后这条会话不写记忆库、也不从记忆库取上下文；
+ * 判定统一走 services/chat/memory.ts（isMemoryEnabled / canWriteMemory）。
+ */
+export const setMemoryEnabled = (id: string, memoryEnabled: boolean) => {
+  if (get().importingHistory || deletingSessions.has(id)) {
+    return
+  }
+  if (getSession(id)) {
+    updateSession(id, (session) => ({ ...session, memoryEnabled }))
+    persist(id)
+  } else {
+    set((state) => ({
+      sessions: state.sessions.map((session) =>
+        session.id === id ? { ...session, memoryEnabled } : session
+      ),
+    }))
+    void db.setMemoryEnabled(id, memoryEnabled).catch(db.reportStorageError('set memory enabled'))
+  }
+}
+
+/**
  * 删除会话；本地原件仅在没有其他会话引用时清理。远端文件不删：导入、编辑、重新生成都会复用同一个附件，
  * 同一服务端文件可能被多个会话引用，不维护引用计数。
  */
