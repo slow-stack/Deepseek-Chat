@@ -1,1 +1,97 @@
-<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#faf9f6"><title>DeepseekChat</title><meta content="0.2.0" name="application-version"><script defer src="static/js/main.b7b7c2cc.js"></script><link href="static/css/main.4889a6c0.css" rel="stylesheet"></head><body><div id="root"></div></body></html>
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#faf9f6"><title>DeepseekChat</title><script>!function(){if(!/[?&]boot=1\b/.test(location.search)){var e=!1;try{e=window.self!==window.top}catch(t){e=!0}if(e||window.innerWidth>=768)return}var t=!1;try{var o=localStorage.getItem("chat-demo:theme-preference"),a=!!window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches;t="dark"===o||(null===o||"system"===o)&&a}catch(e){}var d=!!window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches,n=document.documentElement;window.__bootStartedAt=window.performance?window.performance.now():0,n.setAttribute("data-boot",t?"dark":"light"),d&&n.setAttribute("data-boot-reduce",""),n.style.backgroundColor=t?"#131315":"#faf9f6",window.setTimeout(function(){var e=document.getElementById("boot-splash");e&&(e.classList.add("is-leaving"),window.setTimeout(function(){e.parentNode&&e.parentNode.removeChild(e)},400))},4500)}()</script><style>
+      html,
+      body {
+        margin: 0;
+      }
+      /*
+        开屏压在 #root 之上，等 App 就绪后由 bootSplash.ts 淡出移除。
+        图形首帧就是完整可见的——安卓系统开屏已经把同一个图形画在屏幕正中，
+        这里如果再做一次「出现」动画，中间会闪一下，所以只做上浮 + 名字淡入。
+      */
+      #boot-splash {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 2147483647;
+        align-items: center;
+        justify-content: center;
+        background: #faf9f6;
+        transition: opacity 0.24s ease-out;
+      }
+      html[data-boot] #boot-splash {
+        display: flex;
+      }
+      #boot-splash.is-leaving {
+        opacity: 0;
+      }
+      /* 120px = 安卓系统开屏里那个图形的实际尺寸，两段动画首尾相接时不跳。 */
+      .boot-mark {
+        display: block;
+        width: 120px;
+        height: 120px;
+        animation: boot-lift 0.45s 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
+      .boot-bubble {
+        fill: #1f2328;
+      }
+      .boot-line-w {
+        stroke: #faf9f6;
+      }
+      .boot-line-b {
+        stroke: #3964fe;
+      }
+      .boot-name {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 50%;
+        margin-top: 86px;
+        text-align: center;
+        font: 500 15px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, 'PingFang SC',
+          'Microsoft YaHei', sans-serif;
+        letter-spacing: 0.12em;
+        color: #201f1b;
+        opacity: 0;
+        animation: boot-name-in 0.4s 0.34s ease-out forwards;
+      }
+      html[data-boot='dark'] #boot-splash {
+        background: #131315;
+      }
+      html[data-boot='dark'] .boot-bubble {
+        fill: #edeae3;
+      }
+      html[data-boot='dark'] .boot-line-w {
+        stroke: #131315;
+      }
+      html[data-boot='dark'] .boot-line-b {
+        stroke: #7c93ff;
+      }
+      html[data-boot='dark'] .boot-name {
+        color: #e8e4da;
+      }
+      html[data-boot-reduce] .boot-mark,
+      html[data-boot-reduce] .boot-name {
+        animation: none;
+        opacity: 1;
+        transform: none;
+      }
+      @keyframes boot-lift {
+        to {
+          transform: translateY(-6px);
+        }
+      }
+      @keyframes boot-name-in {
+        to {
+          opacity: 1;
+        }
+      }
+    </style><meta content="0.2.0" name="application-version"><script defer src="static/js/main.58d725d0.js"></script><link href="static/css/main.21e9db87.css" rel="stylesheet"></head><body><div id="root"></div>
+    <div id="boot-splash" aria-hidden="true">
+      <svg class="boot-mark" viewBox="18 21 72 72" fill="none">
+        <rect class="boot-bubble" x="24" y="28" width="60" height="42" rx="14" />
+        <path class="boot-bubble" d="M46 69 L33 86 L58 69 Z"/>
+        <path class="boot-line-w" d="M40 45 H70" stroke-width="6.5" stroke-linecap="round" />
+        <path class="boot-line-b" d="M40 57 H57" stroke-width="6.5" stroke-linecap="round" />
+      </svg>
+      <div class="boot-name">DeepseekChat</div>
+    </div></body></html>
