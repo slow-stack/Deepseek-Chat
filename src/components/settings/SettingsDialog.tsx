@@ -43,6 +43,7 @@ import { Select } from '../base/Select.js'
 import { showToast } from '../base/toastState.js'
 import { PLUGINS, enabledPluginIds, setPluginEnabled } from '../../plugins/registry.js'
 import { ApiKeyConfirm, ApiKeyField, useApiKeyEditor } from './ApiKeyField.js'
+import { BalanceSetting } from './BalanceSetting.js'
 import { ContextSetting } from './ContextSetting.js'
 import { EndpointSetting } from './EndpointSetting.js'
 import { closeSettings, useSettingsDialog, type SettingsSection } from './settingsDialogState.js'
@@ -138,6 +139,7 @@ const SettingsContent = () => {
           ) : section === 'data' ? (
             <>
               <ApiKeyField editor={apiKeyEditor} />
+              <BalanceSetting />
               <ImportHistory historyImport={historyImport} disabled={historyBusy} />
               <ExportHistory disabled={historyBusy} />
               <SettingCell
