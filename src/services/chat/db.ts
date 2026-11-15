@@ -123,6 +123,27 @@ export const renameSession = async (id: string, title: string): Promise<void> =>
   ])
 }
 
+/** 未打开的会话也可改记忆开关：只动 sessions 表，摘要列表不带这个字段。 */
+export const setMemoryEnabled = async (id: string, memoryEnabled: boolean): Promise<void> => {
+  const tx = (await getDB()).transaction('sessions', 'readwrite')
+  await Promise.all([
+    (async () => {
+      try {
+        const sessions = tx.objectStore('sessions')
+        const session = await sessions.get(id)
+        if (session) {
+          session.memoryEnabled = memoryEnabled
+          await sessions.put(session)
+        }
+      } catch (error) {
+        abortTransaction(tx)
+        throw error
+      }
+    })(),
+    tx.done,
+  ])
+}
+
 /** 删除会话，仅清理已无会话引用的本地原件；远端文件不删。 */
 export const deleteSession = async (sessionId: string): Promise<void> => {
   const tx = (await getDB()).transaction(['sessions', 'sessionSummaries', 'files'], 'readwrite')

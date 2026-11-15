@@ -114,6 +114,12 @@ export type Session = {
   messages: Message[]
   /** undefined 表示线性消息列表；null 表示空会话。 */
   rootMessageId?: string | null
+  /**
+   * 会话级记忆开关。true/undefined = 参与记忆；false = 该会话永不写入记忆库，
+   * 也不从记忆库取上下文。读写两侧都必须走 services/chat/memory.ts 的闸门，
+   * 不要直接读这个字段。
+   */
+  memoryEnabled?: boolean
 }
 
 /** 会话列表元数据；消息只在打开会话时加载。 */

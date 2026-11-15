@@ -32,6 +32,40 @@
   margin-left: 113px;
 }
 
+/* 会话级记忆开关：开着是低调的描边胶囊，关掉变虚线与弱化色，避免误以为还在记忆 */
+.memoryChip {
+  margin-left: auto;
+  padding: 3px 10px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 999px;
+  background: transparent;
+  font-size: 11px;
+  line-height: 18px;
+  font-family: inherit;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+  user-select: none;
+  transition:
+    color 120ms ease,
+    border-color 120ms ease,
+    background 120ms ease;
+}
+
+.memoryChip:hover {
+  color: var(--dsw-alias-label-primary);
+  border-color: var(--dsw-alias-label-tertiary);
+}
+
+.memoryChip:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: 2px;
+}
+
+.memoryOff {
+  border-style: dashed;
+  color: var(--dsw-alias-label-tertiary);
+}
+
 .inputContainer {
   position: sticky;
   bottom: 0;
