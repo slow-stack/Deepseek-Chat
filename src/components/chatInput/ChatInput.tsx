@@ -1,6 +1,7 @@
 import clsx from 'clsx'
 import { memo, useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import {
+  IconBrainOutline14,
   IconGlobeLanguageOutline14,
   IconPaperclipOutline16,
   IconSendOutline16,
@@ -9,7 +10,13 @@ import {
 } from '../base/icons.js'
 import { setSearch, setThinking, useSettings } from '../../services/settings.js'
 import { useIsMobile } from '../../app/viewport.js'
-import { sendMessage, stopReply, useChatStore } from '../../services/chat/store.js'
+import { isMemoryEnabled } from '../../services/chat/memory.js'
+import {
+  sendMessage,
+  setMemoryEnabled,
+  stopReply,
+  useChatStore,
+} from '../../services/chat/store.js'
 import {
   addDraftFiles,
   EMPTY_DRAFT,
@@ -53,6 +60,11 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
   const importingHistory = useChatStore((state) => state.importingHistory)
   const isMobile = useIsMobile()
   const search = useSettings((state) => state.search)
+  /** 会话级记忆开关：读已打开会话的闸门状态，新对话（无 sessionId）不显示 */
+  const session = useChatStore((state) =>
+    sessionId === null ? undefined : state.sessionCache[sessionId]
+  )
+  const memoryEnabled = isMemoryEnabled(session)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const togglesRef = useRef<HTMLDivElement>(null)
@@ -226,6 +238,22 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
               <span className={styles.toggleLabel}>{t('search')}</span>
             </button>
           </Tooltip>
+          {sessionId === null ? null : (
+            <Tooltip content={memoryEnabled ? t('memoryOnHint') : t('memoryOffHint')}>
+              <button
+                type="button"
+                className={clsx(styles.toggle, memoryEnabled && styles.selected)}
+                aria-label={memoryEnabled ? t('memoryOn') : t('memoryOff')}
+                aria-pressed={memoryEnabled}
+                onClick={() => setMemoryEnabled(sessionId, !memoryEnabled)}
+              >
+                <IconBrainOutline14 />
+                <span className={styles.toggleLabel}>
+                  {memoryEnabled ? t('memoryOn') : t('memoryOff')}
+                </span>
+              </button>
+            </Tooltip>
+          )}
         </div>
         <div className={styles.right}>
           <VoiceButton
