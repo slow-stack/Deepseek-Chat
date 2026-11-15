@@ -1,8 +1,8 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb'
-import { toSessionSummary, type Session, type SessionSummary } from './types.js'
+import { toSessionSummary, type Session, type SessionProject, type SessionSummary } from './types.js'
 
 /** IndexedDB 存储结构版本；新增或调整存储、索引时递增。 */
-const DB_VERSION = 11
+const DB_VERSION = 12
 
 /** 文件原件按附件的本地 id 存储，所有引用同一 id 的消息共用一份；用于缩略图、打开查看，以及没有 serverId 时补传。 */
 export type StoredFile = {
@@ -23,6 +23,8 @@ interface ChatDB extends DBSchema {
   }
   /** 当前使用的文件原件 */
   files: { key: string; value: StoredFile }
+  /** 项目：会话的归类容器，删除项目不删会话 */
+  projects: { key: string; value: SessionProject }
   /**
    * 历史导入的暂存：导入过程中会话与原件只写入这两个存储，`sessions` / `files` 保持不变；
    * 全部校验通过后在一个事务中替换正式数据并清空暂存，失败时只清空暂存。
@@ -57,7 +59,7 @@ const getDB = () =>
   (dbPromise ??= openDB<ChatDB>('chat-demo', DB_VERSION, {
     upgrade(db, _oldVersion, _newVersion, tx) {
       // 初始化当前格式需要的存储与索引，不迁移旧消息。
-      for (const name of ['sessions', 'files', 'sessionsStaging', 'filesStaging'] as const) {
+      for (const name of ['sessions', 'files', 'projects', 'sessionsStaging', 'filesStaging'] as const) {
         if (!db.objectStoreNames.contains(name)) {
           db.createObjectStore(name, { keyPath: 'id' })
         }
@@ -135,6 +137,68 @@ export const setMemoryEnabled = async (id: string, memoryEnabled: boolean): Prom
           session.memoryEnabled = memoryEnabled
           await sessions.put(session)
         }
+      } catch (error) {
+        abortTransaction(tx)
+        throw error
+      }
+    })(),
+    tx.done,
+  ])
+}
+
+/** 未打开的会话也能移动到项目 / 移出项目：只改 projectId，不重写消息。 */
+export const setSessionProject = async (id: string, projectId: string | null): Promise<void> => {
+  const tx = (await getDB()).transaction(['sessions', 'sessionSummaries'], 'readwrite')
+  await Promise.all([
+    (async () => {
+      try {
+        const summaries = tx.objectStore('sessionSummaries')
+        const summary = await summaries.get(id)
+        if (summary) {
+          await summaries.put({ ...summary, projectId })
+        }
+        const sessions = tx.objectStore('sessions')
+        const session = await sessions.get(id)
+        if (session) {
+          session.projectId = projectId
+          await sessions.put(session)
+        }
+      } catch (error) {
+        abortTransaction(tx)
+        throw error
+      }
+    })(),
+    tx.done,
+  ])
+}
+
+export const loadProjects = async (): Promise<SessionProject[]> =>
+  (await (await getDB()).getAll('projects')).sort((a, b) => a.createdAt - b.createdAt)
+
+export const saveProject = async (project: SessionProject): Promise<void> => {
+  await (await getDB()).put('projects', project)
+}
+
+/** 删项目只摘归类关系：成员会话回到未归类的列表，会话本身不动。 */
+export const deleteProject = async (id: string): Promise<void> => {
+  const tx = (await getDB()).transaction(['projects', 'sessions', 'sessionSummaries'], 'readwrite')
+  await Promise.all([
+    (async () => {
+      try {
+        const summaries = tx.objectStore('sessionSummaries')
+        const sessions = tx.objectStore('sessions')
+        for (const summary of await summaries.getAll()) {
+          if (summary.projectId !== id) {
+            continue
+          }
+          await summaries.put({ ...summary, projectId: null })
+          const session = await sessions.get(summary.id)
+          if (session) {
+            session.projectId = null
+            await sessions.put(session)
+          }
+        }
+        await tx.objectStore('projects').delete(id)
       } catch (error) {
         abortTransaction(tx)
         throw error
@@ -231,7 +295,7 @@ export const updateStagingFileTypes = async (types: ReadonlyMap<string, string>)
 export const commitStaging = async (): Promise<SessionSummary[]> => {
   const summaries: SessionSummary[] = []
   const tx = (await getDB()).transaction(
-    ['sessions', 'sessionSummaries', 'files', 'sessionsStaging', 'filesStaging'],
+    ['sessions', 'sessionSummaries', 'files', 'projects', 'sessionsStaging', 'filesStaging'],
     'readwrite'
   )
   const move = async (from: 'sessionsStaging' | 'filesStaging', to: 'sessions' | 'files') => {
@@ -240,6 +304,8 @@ export const commitStaging = async (): Promise<SessionSummary[]> => {
       await target.clear()
       if (to === 'sessions') {
         await tx.objectStore('sessionSummaries').clear()
+        // 导入会整批换掉会话，旧项目只剩空壳，一并清掉。
+        await tx.objectStore('projects').clear()
       }
       for (
         let cursor = await tx.objectStore(from).openCursor();

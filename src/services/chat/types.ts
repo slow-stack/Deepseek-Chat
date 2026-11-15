@@ -140,10 +140,25 @@ export type Session = {
    * 不要直接读这个字段。
    */
   memoryEnabled?: boolean
+  /** 所属项目；null / undefined 表示还没归到任何项目，留在按时间分组的列表里。 */
+  projectId?: string | null
+}
+
+/**
+ * 项目：把同一类会话收在一起。项目只是归类的容器——
+ * 删项目不会删会话，成员会话回到未归类的列表里。
+ */
+export type SessionProject = {
+  id: string
+  name: string
+  createdAt: number
 }
 
 /** 会话列表元数据；消息只在打开会话时加载。 */
-export type SessionSummary = Pick<Session, 'id' | 'title' | 'createdAt' | 'updatedAt'>
+export type SessionSummary = Pick<
+  Session,
+  'id' | 'title' | 'createdAt' | 'updatedAt' | 'projectId'
+>
 
 /** 显式提取字段，避免将完整会话的消息带进列表。 */
 export const toSessionSummary = (session: SessionSummary): SessionSummary => ({
@@ -151,4 +166,5 @@ export const toSessionSummary = (session: SessionSummary): SessionSummary => ({
   title: session.title,
   createdAt: session.createdAt,
   updatedAt: session.updatedAt,
+  projectId: session.projectId ?? null,
 })

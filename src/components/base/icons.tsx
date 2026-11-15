@@ -330,6 +330,41 @@ export const IconPlugOutline16 = () => (
   </svg>
 )
 
+/// 项目（文件夹）图标：侧栏项目分组用
+export const IconFolderOutline16 = () => (
+  <svg
+    width={16}
+    height={16}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.6}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path d="M4 6a2 2 0 0 1 2-2h3.2a2 2 0 0 1 1.6.8l1.1 1.5a2 2 0 0 0 1.6.7H18a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z" />
+  </svg>
+)
+
+/// 新建项目的小加号
+export const IconPlusOutline14 = () => (
+  <svg
+    width={14}
+    height={14}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.8}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path d="M12 5v14" />
+    <path d="M5 12h14" />
+  </svg>
+)
+
 export const IconThinkOutline14 = () => (
   <svg width={14} height={14} viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path
