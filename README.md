@@ -1,8 +1,8 @@
-# Ariadne
+# DeepseekChat
 
 English | [简体中文](README.zh-CN.md)
 
-A chat client for the DeepSeek API that keeps the whole conversation: every branch you tried, every reply you kept. The name is Ariadne's thread, the line that leads back out.
+A chat client for the DeepSeek API that keeps the whole conversation: every branch you tried, every reply you kept.
 
 No application backend is required. The browser talks to the configured API service directly. The same build runs as a static site, as a panel inside DeepSeek Harness, and as an Android app.
 

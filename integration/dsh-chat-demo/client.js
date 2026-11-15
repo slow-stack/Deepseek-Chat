@@ -122,7 +122,7 @@ window.__ModuleLoader__.load({
           ref: frameRef,
           className: 'dsh-chat-demo-frame',
           src: iframeUrl,
-          title: 'Ariadne',
+          title: 'DeepseekChat',
           allow: 'clipboard-write; microphone',
         }),
         h(
@@ -204,7 +204,7 @@ window.__ModuleLoader__.load({
       // 面板本身在 main 座位，点它走 layout.selectPanel(PANEL_ID)。
       slots.inject('sidebar.footer.action', () =>
         slots.register(
-          { name: 'sidebar.footer.action', id: 'dsh-chat-demo-entry', order: 10, label: 'Ariadne' },
+          { name: 'sidebar.footer.action', id: 'dsh-chat-demo-entry', order: 10, label: 'DeepseekChat' },
           (props) => {
             const wide = !!(props && props.wide)
             return h(
@@ -213,12 +213,12 @@ window.__ModuleLoader__.load({
                 type: 'button',
                 className: 'dsh-chat-demo-entry',
                 'data-narrow': wide ? '0' : '1',
-                title: 'Ariadne',
-                'aria-label': 'Ariadne',
+                title: 'DeepseekChat',
+                'aria-label': 'DeepseekChat',
                 onClick: open,
               },
               h('span', { className: 'dsh-chat-demo-entry-glyph' }, h(Icon, { size: wide ? 16 : 18 })),
-              wide ? h('span', { className: 'dsh-chat-demo-entry-label' }, 'Ariadne') : null,
+              wide ? h('span', { className: 'dsh-chat-demo-entry-label' }, 'DeepseekChat') : null,
             )
           },
         ),

@@ -1,7 +1,7 @@
-# dsh-chat-demo · 面板显示名 Ariadne
+# dsh-chat-demo · 面板显示名 DeepseekChat
 
 把 [deepseek-ai/chat-demo](https://github.com/deepseek-ai/chat-demo)（本仓库 `slow-stack/Deepseek-Chat`）作为 DSH 的一个面板挂起来。
-侧栏入口与面板标题都叫 Ariadne。
+侧栏入口与面板标题都叫 DeepseekChat。
 
 ## 两层
 
@@ -19,7 +19,7 @@ chat-demo 的会话与附件存在浏览器 IndexedDB，按 origin 隔离；端�
 
 ## 记忆面
 
-这个插件不 import mneme，也不写会话日志：在 Ariadne 里聊什么都不会进 mneme。
+这个插件不 import mneme，也不写会话日志：在 DeepseekChat 里聊什么都不会进 mneme。
 隔离不是配置开关，是没有写入口。
 
 ## 安装（本机已装）
