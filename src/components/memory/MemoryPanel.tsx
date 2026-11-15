@@ -1,7 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
 import { useTranslate } from '../../i18n/index.js'
-import { loadMemories, type MemoryRecord } from '../../services/chat/memoryRead.js'
+import { loadMemories, type MemoryQuery, type MemoryRecord } from '../../services/chat/memoryRead.js'
+import { searchByVector, vectorReady } from '../../services/chat/memoryVector.js'
+import {
+  countLocalMemories,
+  countLocalMemoriesByType,
+  countLocalMemoriesSince,
+} from '../../services/chat/memoryStore.js'
+import { useSettings } from '../../services/settings.js'
 import { Button } from '../base/Button.js'
 import { openSettings } from '../settings/settingsDialogState.js'
 import styles from './MemoryPanel.module.css'
@@ -9,10 +16,17 @@ import styles from './MemoryPanel.module.css'
 /** 一页取多少条；「加载更多」按这个步长往后翻 */
 const PAGE_SIZE = 20
 
+/** 统计行里「近 7 天新增」的窗口 */
+const RECENT_DAYS = 7
+
+const RECENT_MS = RECENT_DAYS * 24 * 60 * 60 * 1000
+
 type PanelState =
   | { kind: 'loading' }
   | { kind: 'ready'; items: MemoryRecord[]; total: number | null; mode: string | null }
   | { kind: 'failed' }
+
+type Stats = { total: number; digest: number; recent: number }
 
 const formatDate = (value: string | null): string => {
   if (!value) {
@@ -26,7 +40,23 @@ const formatDate = (value: string | null): string => {
 }
 
 /**
- * 记忆浏览：检索或按时间翻看记忆库，读的是 mneme 记忆服务。
+ * 读一条：开了向量检索就先按意思搜，向量没准备好（没建索引、接口挂了）再退回字面匹配。
+ * 搜索不能因为向量这一层出问题就整个坏掉，所以这里永远是「先试、失败就退」。
+ */
+const readMemories = async (query: MemoryQuery): Promise<PanelReturn> => {
+  if (query.query && vectorReady()) {
+    const semantic = await searchByVector(query)
+    if (semantic) {
+      return semantic
+    }
+  }
+  return loadMemories(query)
+}
+
+type PanelReturn = Awaited<ReturnType<typeof loadMemories>>
+
+/**
+ * 记忆浏览：检索或按时间翻看记忆，默认读本机 IndexedDB，填了服务地址才读远端。
  * 记忆页整页用它（variant='page'），设置里的小窗用它（variant='panel'）。
  */
 export const MemoryBrowser = ({
@@ -38,11 +68,13 @@ export const MemoryBrowser = ({
   refreshKey?: number
 }) => {
   const t = useTranslate()
+  const vectorOn = useSettings((state) => state.memoryVectorEnabled)
   const [draft, setDraft] = useState('')
   const [query, setQuery] = useState('')
   const [state, setState] = useState<PanelState>({ kind: 'loading' })
   const [expanded, setExpanded] = useState<string | null>(null)
   const [moreBusy, setMoreBusy] = useState(false)
+  const [stats, setStats] = useState<Stats | null>(null)
   const requestId = useRef(0)
 
   // 搜索框停顿 350ms 再查，避免每敲一个字打一次请求
@@ -51,10 +83,33 @@ export const MemoryBrowser = ({
     return () => clearTimeout(timer)
   }, [draft])
 
+  // 统计行：三条计数都复用 store 里现成的函数，不额外开接口
+  useEffect(() => {
+    let alive = true
+    void Promise.all([
+      countLocalMemories(),
+      countLocalMemoriesByType('digest'),
+      countLocalMemoriesSince(Date.now() - RECENT_MS),
+    ])
+      .then(([total, digest, recent]) => {
+        if (alive) {
+          setStats({ total, digest, recent })
+        }
+      })
+      .catch(() => {
+        if (alive) {
+          setStats(null)
+        }
+      })
+    return () => {
+      alive = false
+    }
+  }, [refreshKey])
+
   useEffect(() => {
     const id = ++requestId.current
     setState({ kind: 'loading' })
-    loadMemories({ query, limit: PAGE_SIZE })
+    readMemories({ query, limit: PAGE_SIZE })
       .then((page) => {
         if (id !== requestId.current) {
           return
@@ -75,7 +130,11 @@ export const MemoryBrowser = ({
     }
     setMoreBusy(true)
     try {
-      const page = await loadMemories({ query, limit: PAGE_SIZE, offset: state.items.length })
+      const page = await readMemories({
+        query,
+        limit: PAGE_SIZE,
+        offset: state.items.length,
+      })
       setState({
         kind: 'ready',
         items: [...state.items, ...page.items],
@@ -105,11 +164,28 @@ export const MemoryBrowser = ({
 
   return (
     <div className={clsx(styles.section, variant === 'page' && styles.pageSection)}>
+      {stats ? (
+        <div className={styles.stats}>
+          <span>{t('memoryPanelStatTotal', { count: stats.total })}</span>
+          <span className={styles.statDivider} aria-hidden="true">
+            ·
+          </span>
+          <span>{t('memoryPanelStatDigest', { count: stats.digest })}</span>
+          <span className={styles.statDivider} aria-hidden="true">
+            ·
+          </span>
+          <span>{t('memoryPanelStatRecent', { count: stats.recent, days: RECENT_DAYS })}</span>
+        </div>
+      ) : null}
       <div className={styles.search}>
         <input
           className={styles.searchInput}
           value={draft}
-          placeholder={t('memoryPanelSearchPlaceholder')}
+          placeholder={
+            vectorOn && vectorReady()
+              ? t('memoryPanelSearchPlaceholderSemantic')
+              : t('memoryPanelSearchPlaceholder')
+          }
           aria-label={t('memoryPanelSearchPlaceholder')}
           onChange={(event) => setDraft(event.target.value)}
         />

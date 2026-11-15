@@ -1,5 +1,8 @@
 declare const styles: {
   readonly "section": string;
+  readonly "pageSection": string;
+  readonly "stats": string;
+  readonly "statDivider": string;
   readonly "search": string;
   readonly "searchInput": string;
   readonly "list": string;
