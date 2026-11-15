@@ -10,7 +10,10 @@ export type ThemePreference = 'light' | 'dark' | 'system'
 /** 外观皮肤：paper 为新配的纸张配色，classic 还原官方原样 */
 export type Skin = 'paper' | 'classic'
 
-/** 本机设置，存 localStorage：API Key、语言、主题、位置、朗读音色、深度思考与智能搜索开关、侧边栏收起状态 */
+/** 摘要方式：local 本地拼段（不发请求、零成本），model 调模型生成（更好但多一次请求） */
+export type CompactMode = 'local' | 'model'
+
+/** 本机设置，存 localStorage：API Key、语言、主题、位置、朗读音色、深度思考与智能搜索开关、侧边栏收起状态、上下文压缩 */
 type Settings = {
   apiKey: string | null
   locale: Locale
@@ -21,6 +24,11 @@ type Settings = {
   thinking: boolean
   search: boolean
   siderCollapsed: boolean
+  /** 上下文占用达到这个比例时自动压缩，0.3~0.95 */
+  compactThreshold: number
+  /** 压缩时完整保留的最近轮次数，2~20 */
+  compactKeepRounds: number
+  compactMode: CompactMode
 }
 
 const KEYS = {
@@ -33,6 +41,9 @@ const KEYS = {
   thinking: 'chat-demo:thinking',
   search: 'chat-demo:search',
   siderCollapsed: 'chat-demo:sider-collapsed',
+  compactThreshold: 'chat-demo:compact-threshold',
+  compactKeepRounds: 'chat-demo:compact-keep-rounds',
+  compactMode: 'chat-demo:compact-mode',
 } as const
 
 const read = (key: string) => {
@@ -92,6 +103,12 @@ const initialThemePreference = (): ThemePreference => {
 /** 未保存过时使用服务端默认音色 stella（海星） */
 const initialTtsVoice = (): TtsVoice => (read(KEYS.ttsVoice) === 'tide' ? 'tide' : 'stella')
 
+/** 百分比设置统一按整数存，越界时退回默认值 */
+const readNumber = (key: string, fallback: number, min: number, max: number): number => {
+  const value = Number(read(key))
+  return Number.isFinite(value) && value >= min && value <= max ? value : fallback
+}
+
 export const useSettings = create<Settings>(() => ({
   apiKey: read(KEYS.apiKey),
   locale: initialLocale(),
@@ -102,6 +119,10 @@ export const useSettings = create<Settings>(() => ({
   thinking: read(KEYS.thinking) === 'true',
   search: read(KEYS.search) === 'true',
   siderCollapsed: read(KEYS.siderCollapsed) === 'true',
+  // 阈值存百分比整数（30~95），用起来是小数；默认 70%
+  compactThreshold: readNumber(KEYS.compactThreshold, 70, 30, 95) / 100,
+  compactKeepRounds: readNumber(KEYS.compactKeepRounds, 6, 2, 20),
+  compactMode: read(KEYS.compactMode) === 'model' ? 'model' : 'local',
 }))
 
 export const setLocale = (locale: Locale) => {
@@ -148,4 +169,22 @@ export const setSearch = (search: boolean) => {
 export const setSiderCollapsed = (siderCollapsed: boolean) => {
   write(KEYS.siderCollapsed, String(siderCollapsed))
   useSettings.setState({ siderCollapsed })
+}
+
+/** 阈值按百分比整数存，界面显示的也是 30%~95% */
+export const setCompactThreshold = (value: number) => {
+  const compactThreshold = Math.min(0.95, Math.max(0.3, value))
+  write(KEYS.compactThreshold, String(Math.round(compactThreshold * 100)))
+  useSettings.setState({ compactThreshold })
+}
+
+export const setCompactKeepRounds = (value: number) => {
+  const compactKeepRounds = Math.min(20, Math.max(2, Math.round(value)))
+  write(KEYS.compactKeepRounds, String(compactKeepRounds))
+  useSettings.setState({ compactKeepRounds })
+}
+
+export const setCompactMode = (compactMode: CompactMode) => {
+  write(KEYS.compactMode, compactMode)
+  useSettings.setState({ compactMode })
 }

@@ -16,6 +16,12 @@ import {
 } from './drafts.js'
 import { createLatestReminder } from './latestReminder.js'
 import {
+  buildCompaction,
+  getEffectiveContextTokens,
+  planCompaction,
+  selectCompactionRounds,
+} from './compaction.js'
+import {
   applyEvent,
   canContinueReply,
   getContextRounds,
@@ -30,6 +36,7 @@ import {
   type FileAttachment,
   type Message,
   type Session,
+  type SessionCompaction,
   type SessionSummary,
   type UserMessage,
 } from './types.js'
@@ -978,6 +985,71 @@ const waitForRetry = (attempt: number, signal: AbortSignal) =>
   })
 
 /**
+ * 请求前按需压缩上下文：占用达到阈值时把最老几轮换成摘要，摘要随会话落盘。
+ * 返回本次会话可用的压缩记录；未触发或没有可压的轮次时返回原有记录。
+ * 压缩失败不影响本次请求，只退回未压缩的上下文。
+ */
+const compactSession = async (
+  sessionId: string,
+  history: Message[],
+  signal: AbortSignal
+): Promise<SessionCompaction | undefined> => {
+  const session = getSession(sessionId)
+  const previous = session?.compaction
+  const settings = useSettings.getState()
+  const plan = planCompaction(history, settings, previous)
+  if (!plan) {
+    return previous
+  }
+  try {
+    const compaction = await buildCompaction(
+      plan,
+      settings.compactMode,
+      settings.apiKey ?? '',
+      signal,
+      previous
+    )
+    if (signal.aborted) {
+      return previous
+    }
+    updateSession(sessionId, (current) => ({ ...current, compaction }))
+    persist(sessionId)
+    return compaction
+  } catch {
+    return previous
+  }
+}
+
+/** 手动压缩一次：供设置面板的「立即压缩」使用，无更早轮次时返回 false */
+export const compactNow = async (sessionId: string): Promise<boolean> => {
+  const session = getSession(sessionId)
+  if (!session) {
+    return false
+  }
+  const history = getVisibleMessages(session)
+  const settings = useSettings.getState()
+  const plan = selectCompactionRounds(history, settings.compactKeepRounds, session.compaction?.upTo)
+  if (!plan) {
+    return false
+  }
+  const controller = new AbortController()
+  const compaction = await buildCompaction(
+    plan,
+    settings.compactMode,
+    settings.apiKey ?? '',
+    controller.signal,
+    session.compaction
+  )
+  updateSession(sessionId, (current) => ({ ...current, compaction }))
+  persist(sessionId)
+  return true
+}
+
+/** 当前会话可见消息的上下文占用（token），顶栏指示器用；压缩后按摘要重新估算 */
+export const getSessionContextTokens = (session: Session): number =>
+  getEffectiveContextTokens(getVisibleMessages(session), session.compaction)
+
+/**
  * 请求并消费流：先补齐附件的 serverId，再发请求；流式增量按动画帧刷新内存，完成、失败或停止后落盘。
  * 补传失败时回复记为 upload 错误，可重试。
  * 服务端判定 file_id 失效时重新补传后重发，退避重试且次数有上限，超过则按原始报错收尾。
@@ -1012,12 +1084,15 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
         reply = { ...reply, latestReminder }
         updateReply(sessionId, reply)
         persist(sessionId)
+        // 上下文占用超阈值时，先把最老几轮换成摘要；摘要随会话保存，下次请求直接复用。
+        const compaction = await compactSession(sessionId, prepared.history, controller.signal)
         const messages = toRequestMessages(
           prepared.history,
           prepared.question,
           prepared.prefix,
           initial.thinking ?? false,
-          latestReminder
+          latestReminder,
+          compaction
         )
         const events = streamMessage(
           useSettings.getState().apiKey ?? '',

@@ -105,6 +105,24 @@ export type AssistantMessage = MessageBranch & {
 
 export type Message = UserMessage | AssistantMessage
 
+/**
+ * 会话的上下文压缩记录。发请求时把 upTo 之前（含 upTo）的轮次换成 summary，
+ * 原文累积在 originalText 里，「展开原文」直接展示它，不做黑盒。
+ */
+export type SessionCompaction = {
+  /** 被压缩内容的摘要，随会话保存，下次请求用它替换原文 */
+  summary: string
+  /** 最后一条被压掉的回复 id；之后的轮次仍原样进入上下文 */
+  upTo: string
+  /** 被压掉轮次的原文，累积保存 */
+  originalText: string
+  /** 生成方式：local 本地拼段、model 调模型 */
+  mode: 'local' | 'model'
+  /** 已压掉的轮次数，用于展示 */
+  rounds: number
+  createdAt: number
+}
+
 export type Session = {
   id: string
   title: string
@@ -114,6 +132,8 @@ export type Session = {
   messages: Message[]
   /** undefined 表示线性消息列表；null 表示空会话。 */
   rootMessageId?: string | null
+  /** 上下文压缩记录；没有压缩过时缺省 */
+  compaction?: SessionCompaction
   /**
    * 会话级记忆开关。true/undefined = 参与记忆；false = 该会话永不写入记忆库，
    * 也不从记忆库取上下文。读写两侧都必须走 services/chat/memory.ts 的闸门，

@@ -12,8 +12,14 @@ import type {
   Message,
   ReplyBlock,
   ReplyStatus,
+  SessionCompaction,
   UserMessage,
 } from './types.js'
+
+/** 压缩后接在请求开头的说明，让模型知道前面是摘要而不是原话 */
+const COMPACTION_HEADER = '【以下是这段对话更早部分的摘要】'
+/** 摘要后的确认语，保持 user / assistant 交替的轮次结构 */
+const COMPACTION_ACK = '好的，我已了解之前的对话内容。'
 
 /**
  * 文件按 Files API 的 file_id（附件的 serverId）引用：图片用 image 块，其余用 document 块。
@@ -299,13 +305,15 @@ export const getContextRounds = (history: Message[]): [UserMessage, AssistantMes
 /**
  * 把会话转成请求的 messages：只保留「提问 + 有回答的回复」成对的轮次，最后接上本轮提问。
  * 失败或没有回答的轮次不进上下文。续写时末尾再带上本轮 assistant。
+ * 有压缩记录时，被压掉的轮次换成开头一段摘要；锚点消息找不到时按未压缩处理。
  */
 export const toRequestMessages = (
   history: Message[],
   question: UserMessage,
   prefix?: AssistantMessage,
   thinking = prefix?.thinking ?? false,
-  latestReminder?: string
+  latestReminder?: string,
+  compaction?: SessionCompaction
 ): MessageParam[] => {
   const messages: MessageParam[] = []
   let previousReminder: string | undefined
@@ -316,7 +324,17 @@ export const toRequestMessages = (
       previousReminder = reminder
     }
   }
-  for (const [user, reply] of getContextRounds(history)) {
+  const anchor = compaction
+    ? history.findIndex((message) => message.id === compaction.upTo)
+    : -1
+  if (compaction && anchor >= 0) {
+    // 用户与助手各一条，保持请求的轮次结构，同时明确这是压缩后的历史。
+    messages.push(
+      { role: 'user', content: `${COMPACTION_HEADER}\n${compaction.summary}` },
+      { role: 'assistant', content: [{ type: 'text', text: COMPACTION_ACK }] }
+    )
+  }
+  for (const [user, reply] of getContextRounds(anchor >= 0 ? history.slice(anchor + 1) : history)) {
     // 历史提问没有文字、附件也都没有 serverId 时，提问为空，连同回答一起省略。
     if (!user.content && toFileBlocks(user.files).length === 0) {
       continue

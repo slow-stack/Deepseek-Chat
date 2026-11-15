@@ -35,3 +35,74 @@
   margin: 0 auto;
   padding-bottom: 24px;
 }
+
+/* 会话顶部的「已压缩」提示：低调一条，不抢消息的注意力 */
+.banner {
+  margin: 16px 0 4px;
+  padding: 8px 12px;
+  border: 1px dashed var(--dsw-alias-border-l2);
+  border-radius: 10px;
+  background: var(--dsw-alias-bg-layer-2);
+}
+
+.bannerToggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-tertiary);
+  cursor: pointer;
+  text-align: left;
+}
+
+.bannerToggle:hover {
+  color: var(--dsw-alias-label-secondary);
+}
+
+.bannerToggle:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: 2px;
+}
+
+.bannerLabel {
+  font-variant-numeric: tabular-nums;
+}
+
+.bannerAction {
+  flex-shrink: 0;
+}
+
+.bannerBody {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.bannerSection {
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.bannerText {
+  max-height: 260px;
+  margin: 0;
+  padding: 8px;
+  overflow: auto;
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-base);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 18px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--dsw-alias-label-secondary);
+}

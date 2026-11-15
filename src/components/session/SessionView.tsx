@@ -6,6 +6,7 @@ import { isMemoryEnabled } from '../../services/chat/memory.js'
 import { setMemoryEnabled } from '../../services/chat/store.js'
 import { ChatInput } from '../chatInput/ChatInput.js'
 import { MessageList } from '../messages/MessageList.js'
+import { ContextChip } from './ContextChip.js'
 import { MobileHeader } from './MobileHeader.js'
 import styles from './SessionView.module.css'
 
@@ -41,16 +42,23 @@ export const SessionView = ({
   const t = useTranslate()
   const isMobile = useIsMobile()
   const title = session.title || t('untitledChat')
+  /** 记忆开关与上下文占用并排右对齐 */
+  const chips = (
+    <>
+      <ContextChip session={session} />
+      <MemoryChip session={session} />
+    </>
+  )
   return (
     <div className={styles.view}>
       {isMobile ? (
-        <MobileHeader title={title} trailing={<MemoryChip session={session} />} />
+        <MobileHeader title={title} trailing={chips} />
       ) : (
         <div className={styles.header}>
           <div className={clsx(styles.title, siderCollapsed && styles.withCollapsedSider)}>
             {title}
           </div>
-          <MemoryChip session={session} />
+          <div className={styles.chips}>{chips}</div>
         </div>
       )}
       <MessageList

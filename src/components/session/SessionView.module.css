@@ -33,8 +33,16 @@
 }
 
 /* 会话级记忆开关：开着是低调的描边胶囊，关掉变虚线与弱化色，避免误以为还在记忆 */
-.memoryChip {
+/* 顶栏右侧两个胶囊（上下文占用 + 记忆）靠右排，窄屏时允许换行不挤标题 */
+.chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin-left: auto;
+  flex-shrink: 0;
+}
+
+.memoryChip {
   padding: 3px 10px;
   border: 1px solid var(--dsw-alias-border-l2);
   border-radius: 999px;
