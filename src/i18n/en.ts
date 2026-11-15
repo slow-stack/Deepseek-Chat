@@ -70,6 +70,9 @@ export const en = {
   contextHideOriginal: 'Hide original',
   contextOriginalTitle: 'Compacted original text',
   contextOriginalEmpty: 'This chat has not been compacted yet — everything is still sent in full',
+  contextNoSession: 'Open a chat to see how much of its context window is in use',
+  contextSettingsIntro:
+    'These settings apply to every chat; what has been compacted is recorded per chat.',
   deleteSessionModalContentTitle: 'Delete chat?',
   deleteSessionWithFilesDescription:
     'This chat and its uploaded files will be permanently deleted and cannot be recovered. Delete this chat?',
@@ -162,6 +165,7 @@ export const en = {
   settingsLocationCity: 'Select city',
   settingsLocationRegion: 'Select country or region',
   settingDialogAsideGeneralOptionLabel: 'General',
+  settingDialogAsideContextOptionLabel: 'Context',
   settingDialogAsidePluginsOptionLabel: 'Plugins',
   settingDialogAsideDataOptionLabel: 'Data',
   settingDialogAsideAboutOptionLabel: 'About',
