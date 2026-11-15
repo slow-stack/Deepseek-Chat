@@ -12,19 +12,33 @@
  * 为什么写 diag.log：apply 被整段 try/catch 兜住（挂不上不该拖累宿主启动），
  * 出问题时宿主日志里往往什么都没有，于是这里自己留痕。
  *
- * 记忆面：这个插件完全不 import mneme，也不往会话日志写任何东西。聊什么都不会入库。
+ * 记忆面：插件本身不 import mneme 的代码，只在面板主动调用
+ * POST /api/dsh-chat-demo/memory 时代转一条 mneme standalone API 请求
+ * （token 从记忆库的 user_settings 只读取，绝不发往页面）。
+ * 会话级开关在页面侧（会话上的 memoryEnabled），关掉的会话不会走到这条路由。
  */
 
 import { createServer } from "node:http";
 import { appendFileSync, mkdirSync } from "node:fs";
 import { readFile, stat } from "node:fs/promises";
 import { extname, join, normalize } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 
 const PACKAGE_DIR = fileURLToPath(new URL(".", import.meta.url));
 const DIST_DIR = join(PACKAGE_DIR, "dist");
 const DIAG_DIR = "D:/DSH/.dsh/dsh-chat-demo";
 const DIAG_FILE = join(DIAG_DIR, "diag.log");
+
+/** mneme 的记忆库与 standalone API 位置（token 也从这里取，见 readExternalApi）。 */
+const MEMORY_DB = "D:/DSH/.dsh/memory/memory.db";
+const MEMORY_ROUTE = "/api/dsh-chat-demo/memory";
+/**
+ * 对话入库的作用域，写死不给前端拼。
+ * 理由：POST /memories 的 workspace_scope 只校验「非空字符串」，不校验形状
+ * （api-standalone.js 的校验段），写错路径不会报错，只会静默落一条谁也不归属的记忆。
+ */
+const MEMORY_SCOPE = "D:\\DSH\\workspaces\\deepseek-app";
 
 /** 一行一条，带时间戳；写失败也不能影响主流程。 */
 function diag(line) {
@@ -95,6 +109,200 @@ function serveDist(req, res) {
       res.writeHead(500, { "content-type": "text/plain; charset=utf-8" });
       res.end(`读取 chat-demo 静态文件失败：${error?.message ?? error}`);
     });
+}
+
+/* ---------------------------------------------------------------- 记忆通道 */
+
+/**
+ * mneme 的 standalone API 配置（host / port / token）存在记忆库的 user_settings。
+ * 只读打开、进程内缓存：这张表由 mneme 自己维护，这里绝不写。
+ * token 不进返回值以外的地方——不打印、不回前端、不写 diag。
+ */
+let externalApi = null;
+
+function readExternalApi() {
+  if (externalApi) {
+    return externalApi;
+  }
+  const db = new DatabaseSync(MEMORY_DB, { readOnly: true });
+  try {
+    const row = db.prepare("select value from user_settings where key = 'external_api'").get();
+    if (!row?.value) {
+      throw new Error("user_settings 里没有 external_api");
+    }
+    const parsed = JSON.parse(String(row.value));
+    if (parsed?.enabled !== true) {
+      throw new Error("external_api 未启用");
+    }
+    const token = typeof parsed.token === "string" ? parsed.token.trim() : "";
+    if (!token) {
+      throw new Error("external_api 缺少 token");
+    }
+    const host = String(parsed.host || "127.0.0.1");
+    const port = Number(parsed.port || 8790);
+    externalApi = { host, port, token, base: `http://${host}:${port}` };
+    return externalApi;
+  } finally {
+    db.close();
+  }
+}
+
+/** 鉴权失败等情况下丢掉缓存，下次调用重读（用户可能刚在设置页换了 token）。 */
+function forgetExternalApi() {
+  externalApi = null;
+}
+
+/**
+ * 标题 → mneme 记忆 id。同一轮被续写或重新生成时（标题不变、正文变长）
+ * 用它判断该新建还是原地更新；进程内即可，重启后最多多建一行。
+ */
+const memoryIds = new Map();
+
+const MAX_MEMORY_BODY = 1024 * 1024;
+
+function readJsonBody(req, limit) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let size = 0;
+    req.on("data", (chunk) => {
+      size += chunk.length;
+      if (size > limit) {
+        reject(new Error("body-too-large"));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on("end", () => {
+      try {
+        resolve(JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}"));
+      } catch {
+        reject(new Error("invalid-json"));
+      }
+    });
+    req.on("error", reject);
+  });
+}
+
+const reply = (res, status, body) => {
+  res.writeHead(status, {
+    "content-type": "application/json; charset=utf-8",
+    "cache-control": "no-store",
+  });
+  res.end(JSON.stringify(body));
+};
+
+/**
+ * POST /api/dsh-chat-demo/memory —— 把一段对话原文写进 mneme。
+ *
+ * 只接受本面板（同源 iframe）调用；body 由客户端组装，这里只做形状收口：
+ * type 固定 history（document 会被 mneme 400 拒），workspace_scope 写死。
+ * title 参与 mneme 的去重，必须唯一——由客户端按 chat:<sessionId>:<replyId> 生成。
+ * 别往 title 里塞 Date.now()：13 位 epoch 毫秒有约 1/10 能通过 Luhn，
+ * 会被写入准入当成银行卡号拒掉（422 reason:"sensitive"）。时间放 content 与 occurred_at。
+ */
+async function handleMemoryWrite(req, res) {
+  if (req.method !== "POST") {
+    res.writeHead(405, { allow: "POST" });
+    res.end();
+    return;
+  }
+  let body;
+  try {
+    body = await readJsonBody(req, MAX_MEMORY_BODY);
+  } catch (error) {
+    const reason = String(error?.message ?? error);
+    void diag(`memory 拒绝：${reason}`);
+    reply(res, reason === "body-too-large" ? 413 : 400, { error: reason });
+    return;
+  }
+  const title = typeof body?.title === "string" ? body.title.trim() : "";
+  const content = typeof body?.content === "string" ? body.content : "";
+  if (!title || !content.trim()) {
+    reply(res, 400, { error: "missing-title-or-content" });
+    return;
+  }
+
+  let config;
+  try {
+    config = readExternalApi();
+  } catch (error) {
+    // 读不到就明说读不到，别静默当成功：面板那边会把这条标成「未入库」。
+    void diag(`memory 读 external_api 失败：${error?.message ?? error}`);
+    reply(res, 503, { error: "memory-api-unavailable", message: String(error?.message ?? error) });
+    return;
+  }
+
+  const payload = {
+    type: "history",
+    title,
+    content,
+    workspace_scope: MEMORY_SCOPE,
+    occurred_at: typeof body.occurred_at === "string" && body.occurred_at ? body.occurred_at : new Date().toISOString(),
+  };
+
+  // 同一轮被续写/重生成时会再写一次，标题相同、正文更长。mneme 的 POST 只在
+  // 「标题+正文都相同」时并入同一行，正文变了会另起一行 —— 所以我们自己记住
+  // 标题对应的 id，第二次起改走 PUT 原地更新，避免一条对话散成几行。
+  // （PUT 只收 title/content/type/importance/tags/scope，occurred_at 不在其列。）
+  let targetId = memoryIds.get(title);
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const upstream = targetId
+        ? await fetch(`${config.base}/memories/${encodeURIComponent(targetId)}`, {
+            method: "PUT",
+            headers: {
+              authorization: `Bearer ${config.token}`,
+              "content-type": "application/json",
+            },
+            body: JSON.stringify({ content }),
+          })
+        : await fetch(`${config.base}/memories`, {
+            method: "POST",
+            headers: {
+              authorization: `Bearer ${config.token}`,
+              "content-type": "application/json",
+            },
+            body: JSON.stringify(payload),
+          });
+      if (upstream.status === 401 && attempt === 0) {
+        forgetExternalApi();
+        config = readExternalApi();
+        continue;
+      }
+      if (upstream.status === 404 && targetId) {
+        // 那一行被删了（或换了记忆库）：忘掉 id，这次退回 POST 新建。
+        memoryIds.delete(title);
+        targetId = undefined;
+        continue;
+      }
+      const text = await upstream.text();
+      let parsed;
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        parsed = { raw: text.slice(0, 200) };
+      }
+      // PUT 的返回是 { memory: {...} }，POST 的是记忆本身 + action；统一成后者。
+      const saved = parsed?.memory ?? parsed;
+      if (typeof saved?.id === "string" && saved.id) {
+        memoryIds.set(title, saved.id);
+      }
+      const action = parsed?.action ?? (targetId ? "updated" : "saved");
+      // 201/200 建或并、422 内容被准入判据拒 —— 都是 mneme 的明确答复，原样透传。
+      void diag(`memory ${targetId ? "更新" : "写入"} status=${upstream.status} action=${action}`);
+      reply(res, upstream.status, { ...saved, action });
+      return;
+    } catch (error) {
+      if (attempt === 0) {
+        continue;
+      }
+      void diag(`memory 转发失败：${error?.message ?? error}`);
+      reply(res, 502, { error: "memory-api-unreachable", message: String(error?.message ?? error) });
+      return;
+    }
+  }
 }
 
 /** 端口被占时，先确认占着的是不是我们自己那台（换 DSH 版本后热重载会撞上）。 */
@@ -176,7 +384,14 @@ function applyInner(ctx, config = {}) {
     }
   }
 
-  const server = createServer(serveDist);
+  const server = createServer((req, res) => {
+    // 面板自己（8096 同源）发起的记忆写入；静态产物走 GET/HEAD，互不干扰。
+    if (String(req.url || "").split("?")[0] === MEMORY_ROUTE) {
+      void handleMemoryWrite(req, res);
+      return;
+    }
+    serveDist(req, res);
+  });
   let retryTimer = null;
   server.on("error", async (error) => {
     state.attempts += 1;

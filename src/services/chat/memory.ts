@@ -1,4 +1,4 @@
-import type { Session } from './types.js'
+import type { AssistantMessage, Session, UserMessage } from './types.js'
 
 /**
  * 会话级记忆闸门（2026-11-15 桉桉要的 Chatbox 式开关）。
@@ -22,3 +22,73 @@ export const canWriteMemory = (session: Pick<Session, 'memoryEnabled'> | undefin
 /** 取记忆上下文前调用；返回 false 时不要请求记忆库，也不要拼接检索结果。 */
 export const canReadMemory = (session: Pick<Session, 'memoryEnabled'> | undefined): boolean =>
   isMemoryEnabled(session)
+
+/**
+ * 入库路由。同源，由插件 `integration/dsh-chat-demo/index.js` 代转到 mneme 的
+ * standalone API：token 只在插件进程里读，页面拿不到，也不该拿到。
+ * 服务不在（开发服务器、将来脱离 DSH 的 APK）时这里会 404 或网络失败，一律静默。
+ */
+const MEMORY_ENDPOINT = '/api/dsh-chat-demo/memory'
+
+/** 标题必须是纯文本以外的「唯一键」，同时不能撞上写入准入的密钥 / PII 形状判据。 */
+const memoryTitleOf = (session: Pick<Session, 'id'>, reply: Pick<AssistantMessage, 'id'>) =>
+  `chat:${session.id}:${reply.id}`
+
+/** 一轮对话的纯文本：首行是会话标题（标题本身参与去重，不能放这里）。 */
+const memoryContentOf = (
+  session: Pick<Session, 'title'>,
+  question: UserMessage,
+  replyText: string
+) => [session.title, `用户：${question.content}`, `助手：${replyText}`].join('\n').trim()
+
+export type MemoryWriteResult =
+  | { ok: true; action: string }
+  | { ok: false; reason: 'disabled' | 'empty' | 'unreachable' | 'rejected'; message?: string }
+
+/**
+ * 把一轮已完成的对话写进记忆库。挂在本轮收尾处，失败一律不抛：记忆是旁路，
+ * 不能因为写不进库把一个已经答完的回复变成错误。
+ *
+ * 只写 `status === 'done'` 的回复——停止、报错、还没 stream 完的半截话都不入库。
+ */
+export const saveTurnToMemory = async (
+  session: Session | undefined,
+  question: UserMessage,
+  reply: AssistantMessage,
+  replyText: string
+): Promise<MemoryWriteResult> => {
+  if (!canWriteMemory(session)) {
+    return { ok: false, reason: 'disabled' }
+  }
+  if (!replyText.trim()) {
+    return { ok: false, reason: 'empty' }
+  }
+  const body = {
+    title: memoryTitleOf(session as Session, reply),
+    content: memoryContentOf(session as Session, question, replyText),
+    occurred_at: new Date(reply.createdAt || Date.now()).toISOString(),
+  }
+  try {
+    const response = await fetch(MEMORY_ENDPOINT, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    const parsed: unknown = await response.json().catch(() => null)
+    if (!response.ok) {
+      // 422 是写入准入拒了这条内容（判定为敏感），不是网络问题——重试没有意义。
+      const message =
+        parsed && typeof parsed === 'object' && 'error' in parsed ? String(parsed.error) : undefined
+      return {
+        ok: false,
+        reason: response.status === 422 ? 'rejected' : 'unreachable',
+        message,
+      }
+    }
+    const action =
+      parsed && typeof parsed === 'object' && 'action' in parsed ? String(parsed.action) : 'saved'
+    return { ok: true, action }
+  } catch {
+    return { ok: false, reason: 'unreachable' }
+  }
+}
