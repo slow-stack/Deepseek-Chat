@@ -494,3 +494,12 @@
     text-decoration: underline;
   }
 }
+
+/* 余额行右侧的「刷新 + 前往充值」：一行放不下时按钮不缩、金额先换行 */
+.balanceActions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 12px;
+}
+
