@@ -15,6 +15,12 @@ export type Skin = 'paper' | 'classic'
 export type CompactMode = 'local' | 'model'
 
 /**
+ * 桌面图标：内置五套，靠 Android 的 activity-alias 启停来切换。
+ * 只有装成 App 时才有意义，网页里没有这个入口。
+ */
+export type AppIcon = 'v1' | 'v2' | 'v3' | 'v4' | 'v5'
+
+/**
  * 单条能力的接口覆盖。三个字段都是空串时表示完全跟随主接口，
  * 所以我们不做「未设置」与「显式空」的区分。
  */
@@ -35,6 +41,8 @@ type Settings = {
   locale: Locale
   themePreference: ThemePreference
   skin: Skin
+  /** 桌面图标版本；切图标会让系统重建快捷方式，应用可能被重开一次 */
+  appIcon: AppIcon
   location: UserLocation | null
   ttsVoice: TtsVoice
   thinking: boolean
@@ -75,6 +83,7 @@ const KEYS = {
   location: 'chat-demo:location',
   themePreference: 'chat-demo:theme-preference',
   skin: 'chat-demo:skin',
+  appIcon: 'chat-demo:app-icon',
   ttsVoice: 'chat-demo:tts-voice',
   thinking: 'chat-demo:thinking',
   search: 'chat-demo:search',
@@ -154,6 +163,12 @@ const initialThemePreference = (): ThemePreference => {
 /** 未保存过时使用服务端默认音色 stella（海星） */
 const initialTtsVoice = (): TtsVoice => (read(KEYS.ttsVoice) === 'tide' ? 'tide' : 'stella')
 
+/** 未保存过时用 v2：那是内置里最像「对话气泡」的一套 */
+const initialAppIcon = (): AppIcon => {
+  const saved = read(KEYS.appIcon)
+  return saved === 'v1' || saved === 'v3' || saved === 'v4' || saved === 'v5' ? saved : 'v2'
+}
+
 /**
  * 记忆插件默认关着（装上不出现，用户想要才开）。
  * 例外：已经填过服务地址或 token 的，说明本来就在用，升级后不能突然把它藏起来。
@@ -206,6 +221,7 @@ export const useSettings = create<Settings>(() => ({
   location: initialLocation(),
   themePreference: initialThemePreference(),
   skin: read(KEYS.skin) === 'classic' ? 'classic' : 'paper',
+  appIcon: initialAppIcon(),
   ttsVoice: initialTtsVoice(),
   thinking: read(KEYS.thinking) === 'true',
   search: read(KEYS.search) === 'true',
@@ -247,6 +263,11 @@ export const setThemePreference = (themePreference: ThemePreference) => {
 export const setSkin = (skin: Skin) => {
   write(KEYS.skin, skin)
   useSettings.setState({ skin })
+}
+
+export const setAppIcon = (appIcon: AppIcon) => {
+  write(KEYS.appIcon, appIcon)
+  useSettings.setState({ appIcon })
 }
 
 export const setTtsVoice = (ttsVoice: TtsVoice) => {

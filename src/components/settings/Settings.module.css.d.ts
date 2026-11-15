@@ -20,6 +20,10 @@ declare const styles: {
   readonly "themeOption": string;
   readonly "themeOptionSelected": string;
   readonly "themeHint": string;
+  readonly "iconOptions": string;
+  readonly "iconOption": string;
+  readonly "iconOptionSelected": string;
+  readonly "iconPreview": string;
   readonly "description": string;
   readonly "error": string;
   readonly "apiKey": string;
