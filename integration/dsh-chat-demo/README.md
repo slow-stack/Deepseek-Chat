@@ -1,4 +1,4 @@
-# dsh-chat-demo · 面板显示名 Deepseek Chat
+# dsh-chat-demo · 面板显示名 Ariadne
 
 把 [deepseek-ai/chat-demo](https://github.com/deepseek-ai/chat-demo) 作为 DSH 的一个面板挂起来。
 
