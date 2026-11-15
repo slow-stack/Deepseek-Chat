@@ -6,21 +6,27 @@
  * 清单是一个 JSON 文件，字段见 UpdateManifest。
  */
 
-const MANIFEST_PATH = '/slow-stack/Deepseek-Chat/main/release/latest.json'
+const REPO = 'slow-stack/Deepseek-Chat'
+const REF = 'main'
+const FILE = 'release/latest.json'
 
 /**
  * 版本清单地址，按顺序尝试，第一个取到就用。
  *
  * raw.githubusercontent.com 在国内经常连不上，用户点「检查更新」只会看到
- * 「连不上更新源」。所以再放两个 jsDelivr 的 CDN 节点兜底——它们同样托管
+ * 「连不上更新源」。所以再放几个 jsDelivr 的 CDN 节点兜底——它们同样托管
  * 这个仓库的 main 分支，内容一致，且都回 `Access-Control-Allow-Origin: *`。
+ *
+ * 两家的路径格式不一样，别拼成一个模板：
+ *   - raw.githubusercontent.com/<owner>/<repo>/<ref>/<path>
+ *   - cdn.jsdelivr.net/gh/<owner>/<repo>@<ref>/<path>   ← ref 前必须有 @
  */
 export const UPDATE_MANIFEST_URLS: string[] = [
   ...(__UPDATE_MANIFEST__ ? [__UPDATE_MANIFEST__] : []),
-  `https://raw.githubusercontent.com${MANIFEST_PATH}`,
-  `https://fastly.jsdelivr.net/gh${MANIFEST_PATH}`,
-  `https://gcore.jsdelivr.net/gh${MANIFEST_PATH}`,
-  `https://cdn.jsdelivr.net/gh${MANIFEST_PATH}`,
+  `https://raw.githubusercontent.com/${REPO}/${REF}/${FILE}`,
+  `https://fastly.jsdelivr.net/gh/${REPO}@${REF}/${FILE}`,
+  `https://gcore.jsdelivr.net/gh/${REPO}@${REF}/${FILE}`,
+  `https://cdn.jsdelivr.net/gh/${REPO}@${REF}/${FILE}`,
 ]
 
 /** 首个候选地址；保留导出是因为旧代码与测试引用它 */
