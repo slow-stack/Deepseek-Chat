@@ -7,11 +7,15 @@ export type Locale = 'zh-CN' | 'en-US'
 /** 主题偏好；默认跟随系统 */
 export type ThemePreference = 'light' | 'dark' | 'system'
 
+/** 外观皮肤：paper 为新配的纸张配色，classic 还原官方原样 */
+export type Skin = 'paper' | 'classic'
+
 /** 本机设置，存 localStorage：API Key、语言、主题、位置、朗读音色、深度思考与智能搜索开关、侧边栏收起状态 */
 type Settings = {
   apiKey: string | null
   locale: Locale
   themePreference: ThemePreference
+  skin: Skin
   location: UserLocation | null
   ttsVoice: TtsVoice
   thinking: boolean
@@ -24,6 +28,7 @@ const KEYS = {
   locale: 'chat-demo:locale',
   location: 'chat-demo:location',
   themePreference: 'chat-demo:theme-preference',
+  skin: 'chat-demo:skin',
   ttsVoice: 'chat-demo:tts-voice',
   thinking: 'chat-demo:thinking',
   search: 'chat-demo:search',
@@ -92,6 +97,7 @@ export const useSettings = create<Settings>(() => ({
   locale: initialLocale(),
   location: initialLocation(),
   themePreference: initialThemePreference(),
+  skin: read(KEYS.skin) === 'classic' ? 'classic' : 'paper',
   ttsVoice: initialTtsVoice(),
   thinking: read(KEYS.thinking) === 'true',
   search: read(KEYS.search) === 'true',
@@ -112,6 +118,11 @@ export const setLocation = (value: UserLocation | null) => {
 export const setThemePreference = (themePreference: ThemePreference) => {
   write(KEYS.themePreference, themePreference)
   useSettings.setState({ themePreference })
+}
+
+export const setSkin = (skin: Skin) => {
+  write(KEYS.skin, skin)
+  useSettings.setState({ skin })
 }
 
 export const setTtsVoice = (ttsVoice: TtsVoice) => {

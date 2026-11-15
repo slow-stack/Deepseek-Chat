@@ -21,8 +21,11 @@
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  font: var(--dsw-font-s-strong-14);
-  color: var(--dsw-alias-label-primary);
+  font-size: 15px;
+  line-height: 24px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--dsw-alias-label-secondary);
 }
 
 .withCollapsedSider {

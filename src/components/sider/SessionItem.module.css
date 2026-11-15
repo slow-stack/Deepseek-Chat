@@ -4,8 +4,8 @@
   align-items: center;
   box-sizing: border-box;
   height: 40px;
-  padding: 9px 6px 9px 10px;
-  border-radius: 12px;
+  padding: 9px 6px 9px 12px;
+  border-radius: 10px;
   font-size: 14px;
   line-height: 22px;
   color: var(--dsw-alias-label-primary);
@@ -13,7 +13,9 @@
 
   &.active {
     background-color: var(--dsw-specific-sidebar-nav-item-active-accent);
-    color: var(--dsw-alias-brand-primary-invert);
+    color: var(--dsw-alias-label-primary);
+    font-weight: 500;
+    box-shadow: inset 2px 0 0 var(--dsw-alias-brand-primary);
   }
 
   @media (hover: hover) {

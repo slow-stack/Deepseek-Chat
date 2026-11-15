@@ -22,9 +22,11 @@ import {
   isChineseBrowser,
   setLocale,
   setLocation,
+  setSkin,
   setThemePreference,
   setTtsVoice,
   useSettings,
+  type Skin,
   type ThemePreference,
 } from '../../services/settings.js'
 import { useTranslate, type TranslationKey, type TranslationMessage } from '../../i18n/index.js'
@@ -97,6 +99,7 @@ const SettingsContent = () => {
           {section === 'general' ? (
             <>
               <ThemeSetting />
+        <SkinSetting />
               <LocaleSetting />
               <TtsVoiceSetting />
               <LocationSetting />
@@ -393,6 +396,40 @@ const ThemeSetting = () => {
   )
 }
 
+const skinOptions: { value: Skin; label: TranslationKey }[] = [
+  { value: 'paper', label: 'settingDialogSkinPaperOption' },
+  { value: 'classic', label: 'settingDialogSkinClassicOption' },
+]
+
+/** 外观项：纸张 / 经典两套皮肤，与深浅色主题分开，切错了不用重建 */
+const SkinSetting = () => {
+  const t = useTranslate()
+  const skin = useSettings((state) => state.skin)
+  const label = t('settingDialogSkinItemLabel')
+  return (
+    <div className={styles.theme}>
+      {label}
+      <div role="radiogroup" aria-label={label} className={styles.themeOptions}>
+        {skinOptions.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            role="radio"
+            aria-checked={skin === option.value}
+            className={clsx(
+              styles.themeOption,
+              skin === option.value && styles.themeOptionSelected
+            )}
+            onClick={() => setSkin(option.value)}
+          >
+            {t(option.label)}
+          </button>
+        ))}
+      </div>
+      <p className={styles.themeHint}>{t('settingDialogSkinHint')}</p>
+    </div>
+  )
+}
 /** `reason` 为失败原因的文案 key，展示时按当前语言翻译后填入 `message` 参数。 */
 type Status = (TranslationMessage & { error?: boolean; reason?: TranslationKey }) | null
 

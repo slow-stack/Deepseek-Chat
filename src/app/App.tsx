@@ -52,6 +52,11 @@ export const App = () => {
 
   usePreventPageScroll(isMobile)
 
+  // 面板嵌在宿主 iframe 里时，宿主可能在顶部画自己的标签/工具栏；留出一条安全边
+  useEffect(() => {
+    document.documentElement.dataset.embedded = String(window.self !== window.top)
+  }, [])
+
   useEffect(() => {
     document.documentElement.lang = locale
   }, [locale])

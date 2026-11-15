@@ -440,3 +440,9 @@
     max-width: 100%;
   }
 }
+
+.themeHint {
+  margin: -4px 0 0;
+  color: var(--dsw-alias-label-tertiary);
+  font: var(--dsw-alias-font-xs-13, 13px/20px var(--dsw-font-family));
+}

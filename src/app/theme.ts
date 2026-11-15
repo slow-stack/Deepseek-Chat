@@ -60,12 +60,19 @@ const syncTheme = () => {
   }
 }
 
+/** 把当前皮肤写进 body 上的 data-skin；paper 令牌整块挂在这个属性下 */
+const applySkin = () => {
+  document.body.dataset.skin = useSettings.getState().skin
+}
+
 /** 首屏渲染前同步应用一次，之后随主题设置与系统深浅色变化更新 */
 export const setupTheme = () => {
+  applySkin()
   syncTheme()
   if (document.readyState !== 'complete') {
     window.addEventListener('load', syncPageBackground, { once: true })
   }
   query.addEventListener('change', syncTheme)
   useSettings.subscribe(syncTheme)
+  useSettings.subscribe(applySkin)
 }

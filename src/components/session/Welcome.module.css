@@ -13,17 +13,19 @@
   width: 100%;
   max-width: var(--message-list-max-width);
   margin: auto;
-  padding: 0 32px 64px;
+  padding: 0 32px 72px;
 }
 
 .greeting {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 21px;
-  font-size: 24px;
-  line-height: 32px;
+  margin-bottom: 28px;
+  font-family: var(--ds-font-display);
+  font-size: 32px;
+  line-height: 44px;
   font-weight: 600;
+  letter-spacing: -0.02em;
   text-align: center;
   color: var(--dsw-alias-label-primary);
 }
