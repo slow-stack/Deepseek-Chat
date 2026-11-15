@@ -6,7 +6,7 @@
 ## 两层
 
 - **Host（index.js）**：把 `dist/` 挂在 `http://127.0.0.1:8096`（端口在 `cordis.patch.yml` 里配），
-  并提供 `/api/dsh-chat-demo/status` 供面板自查。
+  并把 `POST /api/dsh-chat-demo/memory` 代转到 mneme 的 standalone API。
 - **Client（client.js）**：注册 `sidebar.panellist`（左侧栏图标）与 `main`（整页 iframe）。
 
 面板里的返回按钮归宿主：`client.js` 自己画那个按钮，点下去直接 `layout.selectPanel(null)`，不再依赖 App 内部的 postMessage 往返。
