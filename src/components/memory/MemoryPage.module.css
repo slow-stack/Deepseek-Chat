@@ -19,8 +19,16 @@
 }
 
 .head {
+  display: flex;
   flex-shrink: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
   margin-bottom: 4px;
+}
+
+.headMain {
+  min-width: 0;
 }
 
 .title {
