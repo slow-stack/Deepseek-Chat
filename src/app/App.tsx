@@ -30,6 +30,7 @@ import { runUpdateCheck } from '../components/sider/updateBannerState.js'
 import { autoDigest } from '../services/chat/memoryDigest.js'
 import { useEnabledPlugins } from '../plugins/registry.js'
 import { openChatPage, useAppPage } from './pageState.js'
+import { dismissBootSplash } from './bootSplash.js'
 import styles from './App.module.css'
 
 export const App = () => {
@@ -112,6 +113,14 @@ export const App = () => {
     }
     void autoDigest().catch(() => {})
   }, [ready])
+
+  // 开屏动画（index.html 里的 #boot-splash）等会话就绪或初始化失败时让位；
+  // 它自己还有超时兜底，这里只负责正常路径。
+  useEffect(() => {
+    if (ready || initError) {
+      dismissBootSplash()
+    }
+  }, [ready, initError])
 
   return (
     <>
