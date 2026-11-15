@@ -197,7 +197,11 @@ export const digestSessions = async (
  */
 export type AutoDigestResult = { ran: boolean; saved: number; skipped: number; failed: number }
 
-export const autoDigest = async (): Promise<AutoDigestResult> => {
+// 回到前台会触发一次，手机上切来切去容易连着触发几次；一次整理可能跑几十秒，
+// 期间 gap 还没被 markAutoDigestAt 更新，不挡住就会同时跑两份、烧两份钱。
+let autoDigestInFlight: Promise<AutoDigestResult> | null = null
+
+const runAutoDigest = async (): Promise<AutoDigestResult> => {
   const state = useSettings.getState()
   const idle: AutoDigestResult = { ran: false, saved: 0, skipped: 0, failed: 0 }
   if (!state.memoryPluginEnabled || !state.memoryAutoDigest || !state.apiKey) {
@@ -225,4 +229,14 @@ export const autoDigest = async (): Promise<AutoDigestResult> => {
     skipped: outcome.skipped,
     failed: outcome.failed,
   }
+}
+
+export const autoDigest = (): Promise<AutoDigestResult> => {
+  if (autoDigestInFlight) {
+    return autoDigestInFlight
+  }
+  autoDigestInFlight = runAutoDigest().finally(() => {
+    autoDigestInFlight = null
+  })
+  return autoDigestInFlight
 }
