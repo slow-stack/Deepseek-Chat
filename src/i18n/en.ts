@@ -14,7 +14,7 @@ export const en = {
     'Chats or attachments have not been saved locally. Retry before closing this page.',
   sessionDeleteFailed: 'Unable to delete this chat. Please try again.',
   settings: 'Settings',
-  appName: 'Ariadne',
+  appName: 'DeepseekChat',
   backToHost: 'Back to DSH chat',
   memoryOn: 'Memory',
   memoryOff: 'Memory off',
