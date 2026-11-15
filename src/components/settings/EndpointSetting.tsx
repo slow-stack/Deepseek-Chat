@@ -23,6 +23,10 @@ const LABELS: Record<ApiCapability, { title: TranslationKey; description: Transl
 
 /** 未配置时实际生效的默认值，写出来才看得出来「留空」意味着什么 */
 const describeDefault = (capability: ApiCapability, t: ReturnType<typeof useTranslate>) => {
+  // 搜索留空不是「用哪个地址」，而是换回服务端执行，所以说法不一样
+  if (capability === 'search') {
+    return t('endpointSearchDefault')
+  }
   const hasModel = CAPABILITIES_WITH_MODEL.includes(capability)
   return hasModel
     ? t('endpointDefaultWithModel', { origin: API_ORIGIN })
