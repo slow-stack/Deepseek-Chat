@@ -16,12 +16,22 @@ export const CONTEXT_WINDOW = 128_000
 
 /** 摘要请求用的模型与身份说明，和主对话保持一致 */
 const SUMMARY_MODEL: ChatModel = 'deepseek-flash'
-const SUMMARY_SYSTEM = '你负责把对话压缩成摘要，只保留事实、结论和未完成的事。'
+/**
+ * 摘要是一次后台整理，不是对话：必须明确禁止模型接着往下聊，
+ * 否则它会以助手口吻写一段回复而不是摘要。
+ */
+const SUMMARY_SYSTEM =
+  '你是对话归档器。这是一次不进入角色的后台整理请求：不要继续对话，不要以助手口吻回应，只输出摘要正文。'
 
 /** 摘要长度上限：一段话，够模型接上上下文即可 */
 const SUMMARY_MAX_CHARS = 1200
 /** 本地摘要里每轮保留的开头字数 */
 const ROUND_PREVIEW_CHARS = 120
+/**
+ * 压缩之后上下文要再长这么多（占窗口比例）才值得再压一次。
+ * 没有这道门槛时，会话刚好停在阈值附近，会每轮都发一次摘要请求。
+ */
+const MIN_GROWTH_RATIO = 0.15
 
 /** 摘要方式：local 本地拼段，model 调模型 */
 export type CompactionMode = 'local' | 'model'
@@ -104,6 +114,24 @@ export const getEffectiveContextTokens = (
 /** 达到阈值才压缩 */
 export const shouldCompact = (tokens: number, threshold: number): boolean =>
   tokens >= CONTEXT_WINDOW * threshold
+
+/**
+ * 已经压过一次之后，锚点之后新攒下的内容够不够多。
+ *
+ * 只用估算量比，不拿真实用量减估算值：两者算法不同，相减没有意义。
+ * 锚点已经找不到（消息被编辑或切了分支）时按「可以再压」处理。
+ */
+const grewEnough = (messages: Message[], previous: SessionCompaction): boolean => {
+  const anchor = messages.findIndex((message) => message.id === previous.upTo)
+  if (anchor < 0) {
+    return true
+  }
+  const rest = getContextRounds(messages.slice(anchor + 1))
+  const body = rest
+    .map(([user, reply]) => `${questionText(user)}${getReplyText(reply)}`)
+    .join('')
+  return estimateTokens(body) >= CONTEXT_WINDOW * MIN_GROWTH_RATIO
+}
 
 const questionText = (user: UserMessage): string =>
   user.content.trim() || (user.files.length > 0 ? '（附图）' : '')
@@ -204,13 +232,20 @@ export const selectCompactionRounds = (
 /**
  * 判断是否该压缩并给出方案。token 数优先取最近一轮的真实用量：
  * 那是「这次请求大约会带多少上下文」最准的估计。
+ *
+ * 已经压过一次时，要先看「压完之后又长了多少」，长不够就不再压：
+ * 否则会话卡在阈值附近，每轮都会白发一次摘要请求。
  */
 export const planCompaction = (
   history: Message[],
   settings: Pick<CompactionSettings, 'compactThreshold' | 'compactKeepRounds'>,
   previous?: SessionCompaction
 ): CompactionPlan | null => {
-  if (!shouldCompact(getContextTokens(history), settings.compactThreshold)) {
+  const tokens = getContextTokens(history)
+  if (!shouldCompact(tokens, settings.compactThreshold)) {
+    return null
+  }
+  if (previous && !grewEnough(history, previous)) {
     return null
   }
   return selectCompactionRounds(history, settings.compactKeepRounds, previous?.upTo)
