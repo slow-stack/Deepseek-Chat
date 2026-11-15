@@ -644,3 +644,22 @@ export const IconToastError16 = () => (
     />
   </svg>
 )
+
+/** 上下文压缩：层层叠起的上下文 */
+export const IconContextOutline16 = () => (
+  <svg
+    width={16}
+    height={16}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.6}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path d="M12 3 3 7.5l9 4.5 9-4.5L12 3Z" />
+    <path d="m3 12.5 9 4.5 9-4.5" />
+    <path d="m3 17 9 4.5 9-4.5" />
+  </svg>
+)

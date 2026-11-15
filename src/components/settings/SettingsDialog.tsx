@@ -1,6 +1,7 @@
 import clsx from 'clsx'
 import { useRef, useState, type ReactNode } from 'react'
 import {
+  IconContextOutline16,
   IconDarkOutline16,
   IconDataOutline16,
   IconDownloadOutline16,
@@ -40,6 +41,7 @@ import { Select } from '../base/Select.js'
 import { showToast } from '../base/toastState.js'
 import { PLUGINS, enabledPluginIds, setPluginEnabled } from '../../plugins/registry.js'
 import { ApiKeyConfirm, ApiKeyField, useApiKeyEditor } from './ApiKeyField.js'
+import { ContextSetting } from './ContextSetting.js'
 import { closeSettings, useSettingsDialog, type SettingsSection } from './settingsDialogState.js'
 import styles from './Settings.module.css'
 
@@ -57,6 +59,11 @@ const sections: { value: SettingsSection; label: TranslationKey; icon: ReactNode
     value: 'general',
     label: 'settingDialogAsideGeneralOptionLabel',
     icon: <IconSettingsOutline16 />,
+  },
+  {
+    value: 'context',
+    label: 'settingDialogAsideContextOptionLabel',
+    icon: <IconContextOutline16 />,
   },
   { value: 'plugins', label: 'settingDialogAsidePluginsOptionLabel', icon: <IconPlugOutline16 /> },
   { value: 'data', label: 'settingDialogAsideDataOptionLabel', icon: <IconDataOutline16 /> },
@@ -112,6 +119,8 @@ const SettingsContent = () => {
               <LocationSetting />
               <UpdateSetting />
             </>
+          ) : section === 'context' ? (
+            <ContextSetting />
           ) : section === 'plugins' ? (
             <PluginList />
           ) : section === 'data' ? (
