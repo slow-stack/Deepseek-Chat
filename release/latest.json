@@ -1,5 +1,12 @@
 {
-  "versionName": "0.1.2",
-  "downloadUrl": "https://github.com/slow-stack/Deepseek-Chat/releases/latest",
-  "notes": "记忆面板收进设置，可翻看与搜索记忆库；导入提速；启动检查更新。"
+  "versionName": "0.2.0",
+  "downloadUrl": "https://github.com/slow-stack/Deepseek-Chat/releases/tag/v0.2.0",
+  "highlights": [
+    "记忆页改版：共几条、沉淀了几条、近七天新增，一眼看全；开了自动整理就会自己把旧会话收进记忆",
+    "导入历史对话有进度条了，切到别的页面也不会断，等太久可以取消",
+    "设置里能看账户余额，一键去充值",
+    "桌面图标内置五套，自己挑（安卓没有运行时换图标的接口，切完应用会自己关一次）",
+    "连不上 GitHub 时检查更新改走镜像，不再直接报错"
+  ],
+  "notes": "记忆页改版、导入进度条、余额查询、可换图标。"
 }
