@@ -100,8 +100,28 @@ node scripts/release-manifest.mjs --apk C:\Users\石晴\Desktop\deepseek-chat-ap
 2. 第一次点「下载并安装」，若没授权会跳到「允许安装未知应用」设置页；打开它回来再点。
 3. 下载中百分比在动，到 100% 之后显示「正在校验安装包」。
 4. 校验通过后系统安装器弹出，点「安装」，装完打开确认版本号变了。
-5. 把 `latest.json` 的 `sha256` 故意改错一位，重下一次：必须显示「文件校验不通过」而不是笼统的失败。
-6. 把清单的 `size` 改小，重下一次：必须显示「下载不完整」。
-7. 在浏览器（不含 App）里打开同一页面：按钮必须是「去下载」，点击走浏览器下载。
+5. **取消下载**：下载到一半点「取消下载」→ 立刻回到空闲态（不报错、不弹失败框）→
+   `adb shell ls .../cache/updates/` 里半截文件已经不在 → 再点一次能正常下完。
+6. 清单的 `sha256` 故意改错一位，重下一次：必须显示「文件校验不通过」而不是笼统的失败。
+7. 清单的 `size` 改小，重下一次：必须显示「下载不完整」。
+8. 在浏览器（不含 App）里打开同一页面：按钮必须是「去下载」，点击走浏览器下载。
 
-第 5、6 条验完记得把 `latest.json` 改回脚本生成的值。
+第 5 条是这次改动最容易回退的地方：下载挪到独立线程、取消靠 volatile 标记 + 断开连接，
+一旦又改回 `getBridge().execute()`，取消键就会变成死的（排在同一条线程队列后面），
+而界面上看不出区别——所以必须真点一次、并且核对半截文件被删。
+
+第 6、7 条**用本地清单验，不要改已上架的 `release/latest.json`**：清单改坏，所有已装 App
+都会收到坏更新。做法是把改坏的 json 放本地目录起个静态服务（例如 `npx serve` 或
+`python -m http.server`），然后在 App 页面里把首选源指到它——`update.ts` 的
+`KEY_PREFERRED`（localStorage `chat-demo:update-preferred-source`）接受任意 http(s) URL，
+下次检查就会优先问这个地址：
+
+```js
+localStorage.setItem('chat-demo:update-preferred-source', 'http://127.0.0.1:9000/latest.json')
+// 验完删掉，回到默认多源顺序
+localStorage.removeItem('chat-demo:update-preferred-source')
+```
+
+注意本地清单里的 `downloadUrl` 要指向真实可下的 APK（可以指 GitHub Release 直链），
+只改 `sha256` / `size` 两个字段；`versionName` 必须比已装版本大，否则会被当 stale 跳过。
+
