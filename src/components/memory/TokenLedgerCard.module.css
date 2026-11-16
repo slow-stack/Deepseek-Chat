@@ -1,0 +1,155 @@
+/* Token 消耗卡：入口卡与明细弹窗 */
+
+.cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 12px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.card:hover {
+  background-color: var(--dsw-alias-bg-l2);
+}
+
+.cardTitle {
+  color: var(--dsw-alias-label-primary);
+  font-size: var(--dsw-alias-font-sm-15);
+  font-weight: 500;
+}
+
+.cardHint {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: var(--dsw-alias-font-xs-13);
+  line-height: 1.4;
+}
+
+@media not all and (min-width: 768px) {
+  .cards {
+    margin-top: 10px;
+  }
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 10px;
+}
+
+.intro {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: var(--dsw-alias-font-xs-13);
+  line-height: 20px;
+  margin-bottom: 14px;
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.kind {
+  flex-shrink: 0;
+  width: 72px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: var(--dsw-alias-font-xs-13);
+}
+
+.barTrack {
+  flex: 1;
+  height: 8px;
+  border-radius: 4px;
+  background-color: var(--dsw-alias-interactive-bg-hover);
+  overflow: hidden;
+}
+
+.bar {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background-color: var(--dsw-alias-brand-primary);
+}
+
+.value {
+  flex-shrink: 0;
+  min-width: 64px;
+  text-align: right;
+  color: var(--dsw-alias-label-primary);
+  font-size: var(--dsw-alias-font-xs-13);
+  font-variant-numeric: tabular-nums;
+}
+
+.total {
+  margin-top: 12px;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: var(--dsw-alias-font-xs-13);
+}
+
+.history {
+  margin-top: 16px;
+}
+
+.historyTitle {
+  margin-bottom: 8px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: var(--dsw-alias-font-xs-13);
+  font-weight: 500;
+}
+
+.entry {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 5px 0;
+  font-size: var(--dsw-alias-font-xs-13);
+}
+
+.entryKind {
+  flex-shrink: 0;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.entryTokens {
+  flex: 1;
+  text-align: right;
+  color: var(--dsw-alias-label-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.entryTime {
+  flex-shrink: 0;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+/* mneme（DSH 侧）审计分区：与本地台账同构的条形与流水 */
+.mneme {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--dsw-alias-border-l2);
+}
+
+.mnemeKind {
+  flex-shrink: 0;
+  width: 96px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: var(--dsw-alias-font-xs-13);
+}

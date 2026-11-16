@@ -16,6 +16,7 @@
  * POST /api/dsh-chat-demo/memory 时代转一条 mneme standalone API 请求
  * （token 从记忆库的 user_settings 只读取，绝不发往页面）。
  * 会话级开关在页面侧（会话上的 memoryEnabled），关掉的会话不会走到这条路由。
+ * token 面板同理：GET /api/dsh-chat-demo/llm-audit 代转 mneme 的审计只读端点。
  */
 
 import { createServer } from "node:http";
@@ -35,6 +36,15 @@ const MEMORY_DB = "D:/DSH/.dsh/memory/memory.db";
 const MEMORY_ROUTE = "/api/dsh-chat-demo/memory";
 /** 读记忆：带 q 走检索、不带 q 走分页列表，结果原样透传 */
 const MEMORY_READ_ROUTE = "/api/dsh-chat-demo/memories";
+/**
+ * mneme 的 token 消耗审计：把「哪些环节花了多少 token」的现成账目透传给面板。
+ * 只放行两个只读端点（stats 聚合 / 明细分页），路径写死不让前端拼任意 mneme 路径。
+ */
+const LLM_AUDIT_ROUTE = "/api/dsh-chat-demo/llm-audit";
+const LLM_AUDIT_UPSTREAMS = {
+  stats: "/semantic/llm-audit/stats",
+  items: "/semantic/llm-audit",
+};
 /**
  * 对话入库的作用域，写死不给前端拼。
  * 理由：POST /memories 的 workspace_scope 只校验「非空字符串」，不校验形状
@@ -368,6 +378,62 @@ async function handleMemoryRead(req, res) {
   }
 }
 
+/**
+ * GET /api/dsh-chat-demo/llm-audit?view=stats|items —— 读 mneme 的 token 消耗审计。
+ *
+ * view=stats 走 /semantic/llm-audit/stats（days 参数原样带上，默认 30），
+ * view=items 走 /semantic/llm-audit 分页明细。token 只在这个进程里出现，不回前端。
+ * 审计是只读账目，不接受任何写操作。
+ */
+async function handleLlmAudit(req, res) {
+  if (req.method !== "GET") {
+    res.writeHead(405, { allow: "GET" });
+    res.end();
+    return;
+  }
+  const url = new URL(String(req.url || "/"), "http://127.0.0.1");
+  const view = url.searchParams.get("view") === "items" ? "items" : "stats";
+  const daysRaw = Number(url.searchParams.get("days") || 30);
+  const days = Math.min(Math.max(Number.isFinite(daysRaw) ? daysRaw : 30, 1), 365);
+  const limitRaw = Number(url.searchParams.get("limit") || 20);
+  const limit = Math.min(Math.max(Number.isFinite(limitRaw) ? limitRaw : 20, 1), 100);
+  const offsetRaw = Number(url.searchParams.get("offset") || 0);
+  const offset = Math.max(Number.isFinite(offsetRaw) ? offsetRaw : 0, 0);
+  const upstreamPath =
+    view === "stats"
+      ? `${LLM_AUDIT_UPSTREAMS.stats}?days=${days}`
+      : `${LLM_AUDIT_UPSTREAMS.items}?limit=${limit}&offset=${offset}`;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    let api;
+    try {
+      api = readExternalApi();
+    } catch (error) {
+      reply(res, 503, { error: "memory-api-unavailable", message: String(error?.message ?? error) });
+      return;
+    }
+    try {
+      const upstream = await fetch(`${api.base}${upstreamPath}`, {
+        headers: { authorization: `Bearer ${api.token}`, accept: "application/json" },
+        signal: AbortSignal.timeout(10000),
+      });
+      if ((upstream.status === 401 || upstream.status === 403) && attempt === 0) {
+        forgetExternalApi();
+        continue;
+      }
+      replyRaw(res, upstream.status, await upstream.text());
+      return;
+    } catch (error) {
+      if (attempt === 0) {
+        forgetExternalApi();
+        continue;
+      }
+      void diag(`llm-audit 转发失败：${error?.message ?? error}`);
+      reply(res, 502, { error: "memory-api-unreachable", message: String(error?.message ?? error) });
+      return;
+    }
+  }
+}
+
 /** 端口被占时，先确认占着的是不是我们自己那台（换 DSH 版本后热重载会撞上）。 */
 async function probeExisting(host, port) {
   try {
@@ -456,6 +522,11 @@ function applyInner(ctx, config = {}) {
     // 记忆面板的读取面；同样只在同源 iframe 里用得上
     if (String(req.url || "").split("?")[0] === MEMORY_READ_ROUTE) {
       void handleMemoryRead(req, res);
+      return;
+    }
+    // Token 面板的 mneme 审计读取面
+    if (String(req.url || "").split("?")[0] === LLM_AUDIT_ROUTE) {
+      void handleLlmAudit(req, res);
       return;
     }
     serveDist(req, res);

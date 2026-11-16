@@ -6,6 +6,7 @@ import { getVisibleMessages } from './branches.js'
 import { estimateTokens } from './compaction.js'
 import * as db from './db.js'
 import { exportLocalMemories, saveLocalMemory } from './memoryStore.js'
+import { recordTokenUsage } from './tokenLedger.js'
 import { getReplyText } from './reply.js'
 import type { Session, SessionSummary } from './types.js'
 
@@ -152,6 +153,8 @@ export const digestSessions = async (
             event.usage.cache_creation_input_tokens +
             event.usage.cache_read_input_tokens +
             event.usage.output_tokens
+          // 落账：整理花了多少，按条记进台账
+          void recordTokenUsage('digest', event.usage)
         }
       }
       outcome.tokens += used > 0 ? used : estimateTokens(body)
