@@ -29,6 +29,20 @@ export const UPDATE_MANIFEST_URLS: string[] = [
   `https://cdn.jsdelivr.net/gh/${REPO}@${REF}/${FILE}`,
 ]
 
+/**
+ * jsDelivr 对 @main 这类分支地址缓存得很久：发版后 purge 边缘节点也迟迟不刷，
+ * 兜底源可能长时间回旧清单，让用户「检查不到新版本」。
+ * commit 哈希地址不走分支缓存、即时生效——所以检查时先从 raw 拿 main 的最新哈希
+ * （raw 不经过 jsDelivr），再用哈希去问各家 CDN，双保险。
+ */
+const KEY_MANIFEST_HASH = 'chat-demo:update-manifest-hash'
+
+export const MANIFEST_HASH_URLS: string[] = [
+  `https://fastly.jsdelivr.net/gh/${REPO}@{hash}/${FILE}`,
+  `https://gcore.jsdelivr.net/gh/${REPO}@{hash}/${FILE}`,
+  `https://cdn.jsdelivr.net/gh/${REPO}@{hash}/${FILE}`,
+]
+
 /** 首个候选地址；保留导出是因为旧代码与测试引用它 */
 export const UPDATE_MANIFEST_URL = UPDATE_MANIFEST_URLS[0]
 
@@ -127,30 +141,74 @@ export type CheckResult =
 /**
  * 逐个候选地址取清单，第一个成功解析的胜出。
  * 每个地址单独计时，超时只影响它自己，不会把整次检查拖成 6 秒 × 个数。
+ *
+ * 顺序：上一次存下的 main 哈希地址（即时生效，绕开分支缓存）→ 分支地址。
+ * 分支地址取到清单后顺手把它的提交哈希存下来，供下次检查先用。
  */
 const fetchManifest = async (): Promise<UpdateManifest | null> => {
-  for (const url of UPDATE_MANIFEST_URLS) {
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), 6000)
-    try {
-      const response = await fetch(`${url}?t=${Date.now()}`, {
-        signal: controller.signal,
-        cache: 'no-store',
-      })
-      if (!response.ok) {
-        continue
-      }
-      const manifest = normalizeManifest(await response.json())
+  const hash = read(KEY_MANIFEST_HASH)
+  if (hash && /^[0-9a-f]{40}$/.test(hash)) {
+    for (const template of MANIFEST_HASH_URLS) {
+      const manifest = await fetchOne(template.replace('{hash}', hash))
       if (manifest) {
         return manifest
       }
-    } catch {
-      /* 这个源连不上或返回不是 JSON，换下一个 */
-    } finally {
-      clearTimeout(timer)
     }
   }
+  for (const url of UPDATE_MANIFEST_URLS) {
+    const manifest = await fetchOne(url)
+    if (!manifest) {
+      continue
+    }
+    // 分支地址能通就说明这次连的是 GitHub 或已刷新的 CDN，把哈希记下来
+    void refreshHash()
+    return manifest
+  }
   return null
+}
+
+/** 单个地址取清单；超时 6 秒，失败返回 null */
+const fetchOne = async (url: string): Promise<UpdateManifest | null> => {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 6000)
+  try {
+    const response = await fetch(`${url}?t=${Date.now()}`, {
+      signal: controller.signal,
+      cache: 'no-store',
+    })
+    if (!response.ok) {
+      return null
+    }
+    return normalizeManifest(await response.json())
+  } catch {
+    /* 这个源连不上或返回不是 JSON */
+    return null
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+/** 从 raw 取 main 最新提交哈希存起来；失败不影响本次检查 */
+const refreshHash = async (): Promise<void> => {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 6000)
+  try {
+    const response = await fetch(
+      `https://api.github.com/repos/${REPO}/commits/${REF}`,
+      { signal: controller.signal, cache: 'no-store' }
+    )
+    if (!response.ok) {
+      return
+    }
+    const sha = (await response.json())?.sha
+    if (typeof sha === 'string' && /^[0-9a-f]{40}$/.test(sha)) {
+      write(KEY_MANIFEST_HASH, sha)
+    }
+  } catch {
+    /* api.github.com 连不上就下次再试 */
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 /**

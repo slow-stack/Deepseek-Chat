@@ -355,9 +355,10 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
                 onClick={async () => {
                   setDeletePending(true)
                   try {
-                    if (await removeSession(deleting.id)) {
-                      setDeleting(null)
-                    } else {
+                    const ok = await removeSession(deleting.id)
+                    // 成败都先关弹框：留着只会像「点了没反应」，失败信息有 toast 负责。
+                    setDeleting(null)
+                    if (!ok) {
                       showToast({ key: 'sessionDeleteFailed', type: 'error' })
                     }
                   } finally {

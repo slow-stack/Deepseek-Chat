@@ -150,7 +150,7 @@ const unsavedSessions = new Set<string>()
 /** 保存失败时保留原件，重试成功后才释放。 */
 const pendingFiles = new Map<string, db.StoredFile[]>()
 const deletingSessions = new Set<string>()
-const deletionTasks = new Set<Promise<boolean>>()
+const deletionTasks = new Map<string, Promise<boolean>>()
 const streamFlushes = new Map<string, () => void>()
 let accessSequence = 0
 let historyEpoch = 0
@@ -470,7 +470,7 @@ export const replaceHistory = async (
       running.abort()
     }
     // 已开始的单条删除先同步到内存，避免本次替换失败后列表残留已被删除的记录。
-    await Promise.all(deletionTasks)
+    await Promise.all(deletionTasks.values())
     historyEpoch += 1
     initTask = undefined
     sessionLoads.clear()
@@ -701,8 +701,14 @@ export const setSessionPinned = (id: string, pinned: boolean) => {
  * 同一服务端文件可能被多个会话引用，不维护引用计数。
  */
 export const removeSession = (id: string): Promise<boolean> => {
-  const task = removeSessionData(id).finally(() => deletionTasks.delete(task))
-  deletionTasks.add(task)
+  // 同一条会话连点两次删除时复用同一个任务：第二次等待与第一次相同的结果，
+  // 而不是立刻 false 让弹框显示「删除失败」——用户看到的只是没反应。
+  const pending = deletionTasks.get(id)
+  if (pending) {
+    return pending
+  }
+  const task = removeSessionData(id).finally(() => deletionTasks.delete(id))
+  deletionTasks.set(id, task)
   return task
 }
 
