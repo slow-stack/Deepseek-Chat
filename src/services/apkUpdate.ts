@@ -6,6 +6,7 @@
  * 所有函数都会退化成「做不到」，由调用方回退成浏览器下载。
  *
  * 失败分开报，因为处理办法不一样：
+ *   - cancelled：用户自己点的取消，原生确认已经停了（不是失败，界面该安静回位）；
  *   - incomplete：字节数不对，重下一次大概率就好了；
  *   - tampered：字节数对但哈希不对，来源有问题，要重下并说清文件不对；
  *   - permission：用户还没给「安装未知应用」授权，引导去设置页；
@@ -42,14 +43,26 @@ const plugin = (): ApkInstallerPlugin | null => {
 /** 只有装成 App 才有这条路；网页里返回 false，调用方回退成浏览器下载 */
 export const canInstallInApp = (): boolean => plugin() !== null
 
-export type InstallFailure = 'incomplete' | 'tampered' | 'permission' | 'unavailable' | 'failed'
+export type InstallFailure =
+  | 'cancelled'
+  | 'incomplete'
+  | 'tampered'
+  | 'permission'
+  | 'unavailable'
+  | 'failed'
 
 export type InstallOutcome =
   /** 系统安装器已经起来了，后面用户自己点「安装」 */
   | { ok: true; opened: true }
+  /**
+   * 用户点了取消。stopped＝原生确认下载已中断、半截文件已删；
+   * completed＝取消发得太晚，文件其实已经下完了（path 里是它的位置），只是没去调安装器。
+   * 两种对用户的含义不同，不能合成一句「已取消」。
+   */
+  | { ok: false; reason: 'cancelled'; detail: 'stopped' | 'completed'; path?: string }
   /** 还没授权：已经尽量把设置页打开，让用户回来重试 */
   | { ok: false; reason: 'permission'; settingsOpened: boolean }
-  | { ok: false; reason: Exclude<InstallFailure, 'permission'>; detail?: string }
+  | { ok: false; reason: Exclude<InstallFailure, 'cancelled' | 'permission'>; detail?: string }
 
 export type InstallOptions = {
   url: string
@@ -63,7 +76,7 @@ export type InstallOptions = {
 }
 
 /** 原生错误码 → 我们的失败归类 */
-const classify = (code: string | undefined, message: string): InstallFailure => {
+const classify = (code: string | undefined, message: string): Exclude<InstallFailure, 'cancelled'> => {
   const text = `${code ?? ''} ${message}`.toUpperCase()
   if (text.includes('E_SIZE_MISMATCH')) {
     return 'incomplete'
@@ -178,8 +191,9 @@ export const downloadAndInstall = async (options: InstallOptions): Promise<Insta
       ...(options.fileName ? { fileName: options.fileName } : {}),
     })
 
+    // 取消发得太晚：文件其实已经下完并校验过了。停在安装器之前，不替用户装。
     if (options.isCancelled?.()) {
-      return { ok: false, reason: 'failed', detail: 'cancelled' }
+      return { ok: false, reason: 'cancelled', detail: 'completed' }
     }
 
     const path = downloaded.path ?? ''
@@ -194,6 +208,10 @@ export const downloadAndInstall = async (options: InstallOptions): Promise<Insta
     return { ok: true, opened: true }
   } catch (error) {
     const parsed = errorOf(error)
+    // 原生确认下载被中断（半截文件已删）：这是用户要的结果，不是失败
+    if (options.isCancelled?.()) {
+      return { ok: false, reason: 'cancelled', detail: 'stopped' }
+    }
     const reason = classify(parsed.code, parsed.message)
     if (reason === 'permission') {
       const settingsOpened = await openInstallSettings()
