@@ -110,18 +110,34 @@ node scripts/release-manifest.mjs --apk C:\Users\石晴\Desktop\deepseek-chat-ap
 一旦又改回 `getBridge().execute()`，取消键就会变成死的（排在同一条线程队列后面），
 而界面上看不出区别——所以必须真点一次、并且核对半截文件被删。
 
-第 6、7 条**用本地清单验，不要改已上架的 `release/latest.json`**：清单改坏，所有已装 App
-都会收到坏更新。做法是把改坏的 json 放本地目录起个静态服务（例如 `npx serve` 或
-`python -m http.server`），然后在 App 页面里把首选源指到它——`update.ts` 的
-`KEY_PREFERRED`（localStorage `chat-demo:update-preferred-source`）接受任意 http(s) URL，
-下次检查就会优先问这个地址：
+第 6、7 条**用临时清单验，不要改已上架的 `release/latest.json`**：清单改坏，所有已装 App
+都会收到坏更新。
+
+清单必须放在**手机能访问的 https 地址**上——注意两点：App 跑在手机上，`127.0.0.1` 指的是手机自己，
+电脑上起的静态服务它够不着；而且这个包 `targetSdk 36` 且没有开 `usesCleartextTraffic`，
+明文 http 一律被系统拦掉。所以别用 `python -m http.server` 那类本地地址。
+
+最省事的做法是建一个公开 gist（raw 地址是 https，且带 `Access-Control-Allow-Origin: *`）：
+
+```powershell
+# 复制 release/latest.json，把 versionName 改成比已装大的值（如 0.2.5），
+# 只改 sha256 / size 两个字段，downloadUrl 保留真实 APK 直链
+gh gist create .\latest-test.json --public --desc "update manifest test"
+# 输出的 https://gist.githubusercontent.com/<user>/<id>/raw 就是清单地址，验完删掉
+gh gist delete <id>
+```
+
+然后在 App 页面里把首选源指到这个地址（`update.ts` 的 `KEY_PREFERRED` 接受任意 http(s) URL，
+下次检查会优先问它）：
 
 ```js
-localStorage.setItem('chat-demo:update-preferred-source', 'http://127.0.0.1:9000/latest.json')
+localStorage.setItem('chat-demo:update-preferred-source', 'https://gist.githubusercontent.com/<user>/<id>/raw')
 // 验完删掉，回到默认多源顺序
 localStorage.removeItem('chat-demo:update-preferred-source')
 ```
 
-注意本地清单里的 `downloadUrl` 要指向真实可下的 APK（可以指 GitHub Release 直链），
-只改 `sha256` / `size` 两个字段；`versionName` 必须比已装版本大，否则会被当 stale 跳过。
+`versionName` 必须比已装版本大，否则会被当 stale 跳过、什么也不提示。
+App 是 debug 构建（`android:debuggable=true`），WebView 调试默认开着，
+可以用 `chrome://inspect` 连上页面执行上面这两行、也能改 localStorage 验完再删。
+
 
