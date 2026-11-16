@@ -66,6 +66,14 @@ export type UpdateManifest = {
   notes?: string
   /** 可选：这次更新改了哪几条，弹窗逐条列出；没有就退回 notes */
   highlights?: string[]
+  /**
+   * 可选：APK 的 SHA-256（十六进制，允许带 sha256: 前缀）。
+   * 由 scripts/release-manifest.mjs 从打完的包算出来，不手填。
+   * 缺失时 App 仍能装，只是不做哈希校验。
+   */
+  sha256?: string
+  /** 可选：APK 字节数，用来把「没下完」和「文件被改过」分开报 */
+  size?: number
 }
 
 export type AvailableUpdate = UpdateManifest & { current: string }
@@ -145,6 +153,8 @@ const normalizeManifest = (value: unknown): UpdateManifest | null => {
         (item): item is string => typeof item === 'string' && item.trim() !== ''
       )
     : []
+  const sha256 = normalizeSha256(manifest.sha256)
+  const size = Number(manifest.size)
   return {
     versionName: manifest.versionName,
     downloadUrl: manifest.downloadUrl,
@@ -152,7 +162,18 @@ const normalizeManifest = (value: unknown): UpdateManifest | null => {
       ? { notes: manifest.notes }
       : {}),
     ...(highlights.length > 0 ? { highlights } : {}),
+    ...(sha256 ? { sha256 } : {}),
+    ...(Number.isFinite(size) && size > 0 ? { size } : {}),
   }
+}
+
+/** 只认 64 位十六进制；允许带 sha256: 前缀，别的都当没写 */
+const normalizeSha256 = (value: unknown): string | null => {
+  if (typeof value !== 'string') {
+    return null
+  }
+  const cleaned = value.trim().toLowerCase().replace(/^sha256:/, '')
+  return /^[0-9a-f]{64}$/.test(cleaned) ? cleaned : null
 }
 
 /**
@@ -178,9 +199,11 @@ const normalizeRelease = (value: unknown): UpdateManifest | null => {
     return null
   }
   let downloadUrl = release.html_url
+  let sha256: string | null = null
+  let size: number | null = null
   if (Array.isArray(release.assets)) {
     const apk = release.assets.find(
-      (asset): asset is { browser_download_url: string } =>
+      (asset): asset is { browser_download_url: string; digest?: unknown; size?: unknown } =>
         !!asset &&
         typeof asset === 'object' &&
         typeof (asset as { browser_download_url?: unknown }).browser_download_url === 'string' &&
@@ -188,6 +211,12 @@ const normalizeRelease = (value: unknown): UpdateManifest | null => {
     )
     if (apk) {
       downloadUrl = apk.browser_download_url
+      // GitHub 从 2025 起在 assets[].digest 里给 sha256:…，顺手拿来当清单缺字段时的兜底
+      sha256 = normalizeSha256(apk.digest)
+      const assetSize = Number(apk.size)
+      if (Number.isFinite(assetSize) && assetSize > 0) {
+        size = assetSize
+      }
     }
   }
   const body =
@@ -196,6 +225,8 @@ const normalizeRelease = (value: unknown): UpdateManifest | null => {
     versionName,
     downloadUrl,
     ...(body ? { notes: body } : {}),
+    ...(sha256 ? { sha256 } : {}),
+    ...(size ? { size } : {}),
   }
 }
 

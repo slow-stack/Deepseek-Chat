@@ -1,37 +1,189 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslate } from '../../i18n/index.js'
+import {
+  canInstallInApp,
+  cancelInstall,
+  downloadAndInstall,
+  fileNameFromUrl,
+  type InstallOutcome,
+} from '../../services/apkUpdate.js'
 import { Button } from '../base/Button.js'
 import { Modal } from '../base/Modal.js'
 import { closeUpdateDialog, useUpdateBanner } from './updateBannerState.js'
 import styles from './UpdateDialog.module.css'
 
 /**
- * 检测到新版本时弹出的确认框：列出这次改了什么，用户选择去下载或稍后。
+ * 升级流程的状态。App 里走「下载 → 校验 → 调起系统安装器」，
+ * 网页里没有原生插件，直接退化成浏览器下载（phase 一直是 'idle'）。
+ */
+type Phase = 'idle' | 'downloading' | 'verifying' | 'permission' | 'failed'
+
+type FailureKind = 'incomplete' | 'tampered' | 'unavailable' | 'failed'
+
+/** 进度条上的百分比；拿不到总长时显示已下载的字节数 */
+const progressText = (bytes: number, total: number | null) => {
+  if (total && total > 0) {
+    return `${Math.min(100, Math.round((bytes / total) * 100))}%`
+  }
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+/**
+ * 检测到新版本时弹出的确认框：列出这次改了什么，然后下载并装上。
  *
  * 「稍后」只收起这一次，侧栏提示条仍在，下次启动还会再问；侧栏提示条上的 ×
- * 才会写进 localStorage、这个版本以后不再打扰。下载交给系统浏览器，不接管安装。
+ * 才会写进 localStorage、这个版本以后不再打扰。
+ *
+ * 升级失败一律给两条路：重试、改用浏览器下载。任何时候都不能让用户
+ * 点了升级却什么也做不了。
  */
 const DialogBody = () => {
   const t = useTranslate()
   const update = useUpdateBanner((state) => state.update)
+  const [phase, setPhase] = useState<Phase>('idle')
+  const [percent, setPercent] = useState<{ bytes: number; total: number | null } | null>(null)
+  const [failure, setFailure] = useState<{ kind: FailureKind; detail?: string } | null>(null)
+  const [settingsOpened, setSettingsOpened] = useState(false)
+  const cancelled = useRef(false)
+  const mounted = useRef(true)
+
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
+
+  const start = useCallback(async () => {
+    if (!update) {
+      return
+    }
+    cancelled.current = false
+    setFailure(null)
+    setPercent(null)
+    setPhase('downloading')
+
+    const outcome: InstallOutcome = await downloadAndInstall({
+      url: update.downloadUrl,
+      ...(update.sha256 ? { sha256: update.sha256 } : {}),
+      ...(update.size ? { size: update.size } : {}),
+      fileName: fileNameFromUrl(update.downloadUrl, update.versionName),
+      isCancelled: () => cancelled.current,
+      onProgress: (bytes, total) => {
+        if (!mounted.current) {
+          return
+        }
+        setPercent({ bytes, total })
+        // 下完了切到「校验中」：原生那边接着算哈希，算完才会去调安装器
+        if (total && total > 0 && bytes >= total) {
+          setPhase('verifying')
+        }
+      },
+    })
+    if (!mounted.current) {
+      return
+    }
+
+    // 用户自己按了「取消下载」：静静回到初始状态，不该报错
+    if (cancelled.current) {
+      setPercent(null)
+      setPhase('idle')
+      return
+    }
+
+    if (outcome.ok) {
+      // 系统安装器已经起来了：收掉弹窗，别挡在安装界面后面
+      closeUpdateDialog()
+      return
+    }
+    if (outcome.reason === 'permission') {
+      setSettingsOpened(outcome.settingsOpened)
+      setPhase('permission')
+      return
+    }
+    setFailure({ kind: outcome.reason, ...(outcome.detail ? { detail: outcome.detail } : {}) })
+    setPhase('failed')
+  }, [update])
+
   if (!update) {
     return null
   }
+
   const points = update.highlights?.length
     ? update.highlights
     : update.notes
       ? [update.notes]
       : []
-  return (
-    <Modal
-      title={`${t('updateDialogTitle')} ${update.versionName}`}
-      closable
-      onClose={closeUpdateDialog}
-      className={styles.dialog}
-      footer={
+
+  const inApp = canInstallInApp()
+  const busy = phase === 'downloading' || phase === 'verifying'
+
+  const failureText = () => {
+    if (!failure) {
+      return ''
+    }
+    if (failure.kind === 'incomplete') {
+      return t('updateErrorIncomplete')
+    }
+    if (failure.kind === 'tampered') {
+      return t('updateErrorTampered')
+    }
+    if (failure.kind === 'unavailable') {
+      return t('updateErrorUnavailable')
+    }
+    return failure.detail ? t('updateErrorFailed', { detail: failure.detail }) : t('updateErrorFailedShort')
+  }
+
+  const footer = () => {
+    if (phase === 'downloading') {
+      return (
+        <Button
+          variant="outlined"
+          onClick={() => {
+            cancelled.current = true
+            void cancelInstall()
+            setPhase('idle')
+          }}
+        >
+          {t('updateCancel')}
+        </Button>
+      )
+    }
+    if (phase === 'verifying') {
+      return (
+        <Button variant="outlined" disabled>
+          {t('updateVerifying')}
+        </Button>
+      )
+    }
+    if (phase === 'permission') {
+      return (
         <>
-          <Button variant="outlined" onClick={closeUpdateDialog}>
-            {t('updateLater')}
+          <a className={styles.downloadSecondary} href={update.downloadUrl} target="_system" rel="noreferrer">
+            {t('updateBrowserDownload')}
+          </a>
+          <Button
+            variant="primary"
+            onClick={() => {
+              setPhase('idle')
+              void start()
+            }}
+          >
+            {t('updateRetry')}
           </Button>
+        </>
+      )
+    }
+    return (
+      <>
+        <Button variant="outlined" onClick={closeUpdateDialog}>
+          {t('updateLater')}
+        </Button>
+        {inApp ? (
+          <Button variant="primary" onClick={() => void start()}>
+            {phase === 'failed' ? t('updateRetry') : t('updateDownloadAndInstall')}
+          </Button>
+        ) : (
           <a
             className={styles.download}
             href={update.downloadUrl}
@@ -41,8 +193,18 @@ const DialogBody = () => {
           >
             {t('updateDownload')}
           </a>
-        </>
-      }
+        )}
+      </>
+    )
+  }
+
+  return (
+    <Modal
+      title={`${t('updateDialogTitle')} ${update.versionName}`}
+      closable={!busy}
+      onClose={busy ? () => undefined : closeUpdateDialog}
+      className={styles.dialog}
+      footer={footer()}
     >
       <div className={styles.version}>
         {t('updateCurrentVersion', { version: update.current })}
@@ -63,6 +225,43 @@ const DialogBody = () => {
       ) : (
         <div className={styles.notes}>{t('updateDialogNoNotes')}</div>
       )}
+
+      {phase === 'downloading' ? (
+        <div className={styles.progress}>
+          <div className={styles.progressTrack}>
+            <div
+              className={styles.progressBar}
+              style={{
+                width: percent?.total
+                  ? `${Math.min(100, Math.round((percent.bytes / percent.total) * 100))}%`
+                  : '30%',
+              }}
+            />
+          </div>
+          <div className={styles.progressText}>
+            {percent ? progressText(percent.bytes, percent.total) : t('updateDownloading')}
+          </div>
+        </div>
+      ) : null}
+
+      {phase === 'verifying' ? (
+        <div className={styles.progressText}>{t('updateVerifying')}</div>
+      ) : null}
+
+      {phase === 'permission' ? (
+        <div className={styles.hint}>
+          {settingsOpened ? t('updatePermissionOpened') : t('updatePermissionManual')}
+        </div>
+      ) : null}
+
+      {phase === 'failed' ? (
+        <>
+          <div className={styles.error}>{failureText()}</div>
+          <a className={styles.fallbackLink} href={update.downloadUrl} target="_system" rel="noreferrer">
+            {t('updateBrowserDownload')}
+          </a>
+        </>
+      ) : null}
     </Modal>
   )
 }

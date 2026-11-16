@@ -488,4 +488,22 @@ export const en = {
   updateLatest: 'You are on the latest version',
   updateUnreachable: "Couldn't reach the update source",
   updateCurrentVersion: 'Current version {version}',
+  updateDownloadAndInstall: 'Download and install',
+  updateDownloading: 'Downloading…',
+  updateVerifying: 'Verifying the package…',
+  updateCancel: 'Cancel download',
+  updateRetry: 'Retry',
+  updateBrowserDownload: 'Download in browser',
+  updatePermissionOpened:
+    'The "install unknown apps" screen is open. Allow this app, then come back and tap Retry.',
+  updatePermissionManual:
+    'Allow this app to install unknown apps in system settings, then come back and tap Retry.',
+  updateErrorIncomplete:
+    'The download was incomplete — the connection probably dropped. Tap Retry to download again.',
+  updateErrorTampered:
+    'The package failed verification and may have been altered. Retry, or download in the browser instead.',
+  updateErrorUnavailable: "This device can't install it directly. Use the browser download.",
+  updateErrorFailed: "The install didn't go through: {detail}",
+  updateErrorFailedShort:
+    "The install didn't go through. Retry, or download in the browser instead.",
 } satisfies Record<keyof typeof zh, string>
