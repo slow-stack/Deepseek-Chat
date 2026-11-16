@@ -38,8 +38,11 @@ const entryName = (name: string) => {
   return { name: normalized, byteLength: bytes.length }
 }
 
-/** STORE 流式写入；成品必须能再次导入。 */
-export const writeArchive = async (entries: { name: string; blob: Blob }[]): Promise<Blob> => {
+/** STORE 流式写入；成品必须能再次导入。signal 中断时丢掉半成品，不返回残缺 ZIP。 */
+export const writeArchive = async (
+  entries: { name: string; blob: Blob }[],
+  signal?: AbortSignal
+): Promise<Blob> => {
   if (entries.length >= ZIP64_COUNT) {
     throw new ArchiveLimitError()
   }
@@ -80,6 +83,8 @@ export const writeArchive = async (entries: { name: string; blob: Blob }[]): Pro
   })
   try {
     for (const { name, blob } of prepared) {
+      // 每条进入压缩前先看一次信号：大 ZIP 里单条也可能是几十兆的图片。
+      signal?.throwIfAborted()
       const entry = new ZipPassThrough(name)
       entry.mtime = new Date(1980, 0, 1)
       zip.add(entry)
@@ -91,6 +96,7 @@ export const writeArchive = async (entries: { name: string; blob: Blob }[]): Pro
           if (done) {
             break
           }
+          signal?.throwIfAborted()
           written += value.byteLength
           if (written > blob.size) {
             invalid()

@@ -83,9 +83,14 @@ const serverTools = (search: boolean): CreateMessageRequest['tools'] => {
 /** 允许自动补标题的请求；手动重命名后取消本轮标题写入，包含主动清空标题的情况。 */
 const titleRequests = new Set<AbortController>()
 
-/** 历史导入进度；total 为 null 表示还在读目录、条目数未知。 */
+/**
+ * 历史导入、导出的进度；total 为 null 表示总数未知。
+ * 导入的 committing 阶段写进本地库，导出的 packing 阶段压 ZIP、saving 阶段写进用户选的位置；
+ * 三者都不可省略。
+ */
 export type HistoryProgress = {
-  phase: 'reading' | 'committing'
+  kind: 'import' | 'export'
+  phase: 'reading' | 'committing' | 'packing' | 'saving'
   done: number
   total: number | null
 }
@@ -158,6 +163,8 @@ let accessSequence = 0
 let historyEpoch = 0
 /** 当前正在跑的导入；取消按钮通过它中断逐条目循环。 */
 let historyImportController: AbortController | null = null
+/** 当前正在跑的导出；取消按钮通过它中断逐会话循环。 */
+let historyExportController: AbortController | null = null
 let initTask: Promise<void> | undefined
 const sessionLoads = new Map<string, { promise: Promise<void> }>()
 
@@ -466,7 +473,10 @@ export const replaceHistory = async (
   }
   const controller = new AbortController()
   historyImportController = controller
-  set({ importingHistory: true, historyProgress: { phase: 'reading', done: 0, total: null } })
+  set({
+    importingHistory: true,
+    historyProgress: { kind: 'import', phase: 'reading', done: 0, total: null },
+  })
   try {
     for (const running of Object.values(get().streaming)) {
       running.abort()
@@ -488,12 +498,12 @@ export const replaceHistory = async (
         (next, count) => {
           done = next
           total = count
-          set({ historyProgress: { phase: 'reading', done: next, total: count } })
+          set({ historyProgress: { kind: 'import', phase: 'reading', done: next, total: count } })
         },
         controller.signal
       )
       // 读出条目后还要整批搬进正式表，这一步在大库里也不短。
-      set({ historyProgress: { phase: 'committing', done, total } })
+      set({ historyProgress: { kind: 'import', phase: 'committing', done, total } })
       summaries = await db.commitStaging()
     } catch (error) {
       await db.clearStaging().catch(db.reportStorageError('clear unfinished history replacement'))
@@ -533,10 +543,57 @@ export const cancelHistoryImport = () => {
   historyImportController?.abort()
 }
 
-/** 取消导入抛的是 AbortError；调用方据此区分「用户自己取消」与「真的失败」。 */
+/** 导出进度与取消信号：由 exportHistory 在备份队列里持有，界面只读 store。 */
+export type HistoryExportReporter = {
+  signal: AbortSignal
+  /** 逐会话读出的进度；总数固定是打开导出时的会话数。 */
+  reading: (done: number, total: number) => void
+  /** 进入压缩打包阶段；这一步也可能几十秒，且允许取消。 */
+  packing: (done: number, total: number) => void
+  /** 打包完成、开始往设备里写；写盘不能中途停，否则会留下半个文件。 */
+  saving: () => void
+}
+
+/** 开始一次导出；已有导出在跑时返回 null，避免两条进度互相覆盖。 */
+export const beginHistoryExport = (): HistoryExportReporter | null => {
+  if (historyExportController) {
+    return null
+  }
+  const controller = new AbortController()
+  historyExportController = controller
+  const total = get().sessions.length
+  set({ historyProgress: { kind: 'export', phase: 'reading', done: 0, total } })
+  return {
+    signal: controller.signal,
+    reading: (done, count) =>
+      set({ historyProgress: { kind: 'export', phase: 'reading', done, total: count } }),
+    packing: (done, count) =>
+      set({ historyProgress: { kind: 'export', phase: 'packing', done, total: count } }),
+    saving: () =>
+      set({ historyProgress: { kind: 'export', phase: 'saving', done: 0, total: null } }),
+  }
+}
+
+/** 导出结束（成功、失败、取消都走这里），清掉进度面板。 */
+export const endHistoryExport = () => {
+  historyExportController = null
+  // 备份队列是串行的，导入不会插进来；这里仍按 kind 认一次，别误清别人的进度。
+  if (get().historyProgress?.kind === 'export') {
+    set({ historyProgress: null })
+  }
+}
+
+export const cancelHistoryExport = () => {
+  historyExportController?.abort()
+}
+
+/** 取消导入、导出抛的都是 AbortError；调用方据此区分「用户自己取消」与「真的失败」。 */
 // DOMException 在多数浏览器里不是 Error 的子类，只能按 name 认。
-export const isHistoryImportAborted = (error: unknown) =>
+export const isHistoryAbort = (error: unknown) =>
   typeof error === 'object' && error !== null && (error as { name?: unknown }).name === 'AbortError'
+
+/** 导入侧的旧名字，保留给设置页现有的取消提示判断。 */
+export const isHistoryImportAborted = isHistoryAbort
 
 export const newChat = () => {
   if (!get().importingHistory) {

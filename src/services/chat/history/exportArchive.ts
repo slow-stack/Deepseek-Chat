@@ -10,16 +10,23 @@ const json = (value: unknown) => new Blob([JSON.stringify(value)], { type: 'appl
 /**
  * 按导出格式生成 ZIP：manifest → 全部会话 JSON → index → 全部图片。没有账号信息，不写 user.json。
  * 只写出本地有原件的图片，每个会话目录各写一份；其他附件只有元数据。
+ * onProgress 报已读会话数（打包图片的阶段不再递增），signal 中断时不留半成品。
  */
 export const exportArchive = async (
-  sessions: Iterable<Session> | AsyncIterable<Session>
+  sessions: Iterable<Session> | AsyncIterable<Session>,
+  onProgress?: (done: number, total: number) => void,
+  total?: number,
+  signal?: AbortSignal,
+  onPacking?: () => void
 ): Promise<Blob> => {
   const manifest: Manifest = { export_format_version: EXPORT_FORMAT_VERSION }
   const entries = [{ name: MANIFEST_PATH, blob: json(manifest) }]
   const imageEntries: { name: string; blob: Blob }[] = []
   const index: SessionIndexEntry[] = []
   const originals = new Map<string, Blob | undefined>()
+  let done = 0
   for await (const session of sessions) {
+    signal?.throwIfAborted()
     for (const message of session.messages) {
       if (message.role === 'user') {
         for (const file of message.files) {
@@ -44,7 +51,13 @@ export const exportArchive = async (
       imageEntries.push({ name, blob })
     }
     index.push(toIndexEntry(data))
+    done += 1
+    if (total !== undefined) {
+      onProgress?.(done, total)
+    }
   }
   entries.push({ name: INDEX_PATH, blob: json(index) })
-  return writeArchive(entries.concat(imageEntries))
+  signal?.throwIfAborted()
+  onPacking?.()
+  return writeArchive(entries.concat(imageEntries), signal)
 }
