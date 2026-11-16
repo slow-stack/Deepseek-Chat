@@ -14,7 +14,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  /* 两个图标按钮挤在一起显得黏成一团，中间垫开一点 */
+  gap: 12px;
   box-sizing: border-box;
   height: 48px;
   margin-bottom: 16px;

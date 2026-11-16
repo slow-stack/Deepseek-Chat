@@ -8,6 +8,7 @@ import { IconRefreshOutline16 } from '../base/icons.js'
 import { MobileHeader } from '../session/MobileHeader.js'
 import { DigestDialog } from './DigestDialog.js'
 import { MemoryBrowser } from './MemoryPanel.js'
+import { ProfileCards } from './ProfileCards.js'
 import styles from './MemoryPage.module.css'
 
 /**
@@ -97,6 +98,7 @@ export const MemoryPage = () => {
             ))}
           </div>
         ) : null}
+        <ProfileCards />
         <MemoryBrowser variant="page" refreshKey={refreshKey} projectId={projectId} />
       </div>
       {digesting ? (
