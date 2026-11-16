@@ -38,7 +38,7 @@ const formatItem = (item: MemoryRecord, index: number): string => {
 
 /** 拼成一段纯文本；没有任何命中时返回空串，调用方据此决定要不要改 system。 */
 export const buildMemoryContext = async (
-  session: Pick<Session, 'memoryEnabled'> | undefined,
+  session: Pick<Session, 'memoryEnabled' | 'projectId'> | undefined,
   query: string
 ): Promise<string> => {
   if (!canReadMemory(session)) {
@@ -48,8 +48,11 @@ export const buildMemoryContext = async (
   if (!text) {
     return ''
   }
+  // 会话在项目里时，带这个项目的记忆 + 全局记忆：项目里的事和关于这个人本身的事都该知道，
+  // 但不该读到别的项目。不在项目里就只看全局。
+  const projectId = session?.projectId ?? null
   const page = await Promise.race([
-    loadMemories({ query: text, limit: MEMORY_LIMIT }),
+    loadMemories({ query: text, limit: MEMORY_LIMIT, projectId, includeGlobal: projectId !== null }),
     new Promise<null>((resolve) => {
       setTimeout(() => resolve(null), MEMORY_TIMEOUT_MS)
     }),

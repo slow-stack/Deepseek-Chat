@@ -193,10 +193,18 @@ export const searchByVector = async (
   }
   const records = await exportLocalMemories()
   const byId = new Map(records.map((record) => [record.id, record]))
+  // 归属先筛再算距离：项目会话不该因为别的项目里有一条语义相近的记忆就被喂错上下文
+  const inScope = (record: MemoryRecord): boolean => {
+    if (query.projectId === undefined) {
+      return true
+    }
+    const own = record.projectId ?? null
+    return own === query.projectId || (query.includeGlobal === true && own === null)
+  }
   const scored = vectors
     .map((item) => {
       const record = byId.get(item.id)
-      return record ? { record, score: cosine(target, item.vector) } : null
+      return record && inScope(record) ? { record, score: cosine(target, item.vector) } : null
     })
     .filter((item): item is { record: MemoryRecord; score: number } => item !== null)
     .sort((a, b) => b.score - a.score)

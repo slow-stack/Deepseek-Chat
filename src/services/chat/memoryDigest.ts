@@ -167,6 +167,8 @@ export const digestSessions = async (
         occurredAt: new Date(session.updatedAt || Date.now()).toISOString(),
         type: 'digest',
         tags: [],
+        // 会话在哪个项目，沉淀出来的记忆就归哪个项目
+        projectId: session.projectId ?? summary.projectId ?? null,
       })
       outcome.saved += 1
     } catch {

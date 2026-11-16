@@ -62,20 +62,25 @@ const readMemories = async (query: MemoryQuery): Promise<PanelReturn> => {
   }
   return loadMemories(query)
 }
-
 type PanelReturn = Awaited<ReturnType<typeof loadMemories>>
 
 /**
  * 记忆浏览：检索或按时间翻看记忆，默认读本机 IndexedDB，填了服务地址才读远端。
  * 记忆页整页用它（variant='page'），设置里的小窗用它（variant='panel'）。
+ *
+ * projectId 决定看哪一栏：不传是全部，`null` 是全局（不属于任何项目的），
+ * 字符串是那个项目的。记忆页顶部的分段器就是在切这个值。
  */
 export const MemoryBrowser = ({
   variant = 'panel',
   refreshKey = 0,
+  projectId,
 }: {
   variant?: 'panel' | 'page'
   /** 外部写入记忆后改这个数，列表会重新读一遍 */
   refreshKey?: number
+  /** 归属筛选：不传 = 全部；null = 全局；字符串 = 那个项目 */
+  projectId?: string | null
 }) => {
   const t = useTranslate()
   const vectorOn = useSettings((state) => state.memoryVectorEnabled)
@@ -98,9 +103,9 @@ export const MemoryBrowser = ({
   useEffect(() => {
     let alive = true
     void Promise.all([
-      countLocalMemories(),
-      countLocalMemoriesByType('digest'),
-      countLocalMemoriesSince(Date.now() - RECENT_MS),
+      countLocalMemories(projectId),
+      countLocalMemoriesByType('digest', projectId),
+      countLocalMemoriesSince(Date.now() - RECENT_MS, projectId),
     ])
       .then(([total, digest, recent]) => {
         if (alive) {
@@ -115,12 +120,12 @@ export const MemoryBrowser = ({
     return () => {
       alive = false
     }
-  }, [refreshKey])
+  }, [refreshKey, projectId])
 
   useEffect(() => {
     const id = ++requestId.current
     setState({ kind: 'loading' })
-    readMemories({ query, limit: PAGE_SIZE })
+    readMemories({ query, limit: PAGE_SIZE, projectId })
       .then((page) => {
         if (id !== requestId.current) {
           return
@@ -134,7 +139,7 @@ export const MemoryBrowser = ({
         // 明文被设备拦下时不说「读不到」，那是另一件事
         setState({ kind: 'failed', cleartext: isCleartextFailure(error) })
       })
-  }, [query, refreshKey])
+  }, [query, refreshKey, projectId])
 
   const loadMore = useCallback(async () => {
     if (state.kind !== 'ready' || moreBusy) {
@@ -146,6 +151,7 @@ export const MemoryBrowser = ({
         query,
         limit: PAGE_SIZE,
         offset: state.items.length,
+        projectId,
       })
       setState({
         kind: 'ready',
@@ -158,7 +164,7 @@ export const MemoryBrowser = ({
     } finally {
       setMoreBusy(false)
     }
-  }, [state, moreBusy, query])
+  }, [state, moreBusy, query, projectId])
 
   /**
    * 删一条记忆：只对本机库生效。

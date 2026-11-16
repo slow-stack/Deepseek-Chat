@@ -57,6 +57,9 @@ export const en = {
   memoryServiceReachable: 'Connected — memory is readable',
   memoryServiceUnreachable: 'Cannot connect. Check the address, the token, and whether the service is running',
   memoryPageSubtitle: 'Everything you said stays here, newest first — search for any line.',
+  memoryScopeAll: 'All',
+  memoryScopeGlobal: 'Global',
+  memoryScopeLabel: 'Browse memories by scope',
   memoryDigestOpen: 'Tidy imported chats',
   memoryDigestTitle: 'Tidy imported chats',
   memoryDigestIntro:

@@ -52,6 +52,9 @@ export const zh = {
   memoryServiceReachable: '连上了，能读到记忆',
   memoryServiceUnreachable: '连不上，检查地址、token 和服务是否在跑',
   memoryPageSubtitle: '说过的话都留在这里，按时间倒序；想找哪句就搜哪句。',
+  memoryScopeAll: '全部',
+  memoryScopeGlobal: '全局',
+  memoryScopeLabel: '按归属查看记忆',
   memoryDigestOpen: '整理历史会话',
   memoryDigestTitle: '整理历史会话',
   memoryDigestIntro:

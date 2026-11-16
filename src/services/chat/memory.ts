@@ -90,6 +90,9 @@ export const saveTurnToMemory = async (
         occurredAt: body.occurred_at,
         type: 'conversation',
         tags: [],
+        // 归属跟着来源会话：项目里的会话写出的记忆也算那个项目的，
+        // 以后在记忆页按项目看才不会所有记忆都挤在「全局」里
+        projectId: session?.projectId ?? null,
       })
       return { ok: true, action: 'saved' }
     } catch {
