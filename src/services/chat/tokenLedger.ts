@@ -1,4 +1,4 @@
-import { openDB, type DBSchema, type IDBPDatabase } from 'idb'
+import { getMemoryDB } from './memoryStore.js'
 
 /**
  * Token 台账：把每个会花钱的整理动作记一笔，让「记忆花了多少 token、花在哪」可查。
@@ -12,9 +12,11 @@ import { openDB, type DBSchema, type IDBPDatabase } from 'idb'
  * 能拿到服务端 usage 就记真实值；拿不到（请求失败、旧事件缺 usage）就不记——
  * 宁可账上少一笔，也不放一个估算出来的假数。
  * 估算只作为「这次运行的总和」的兜底（见 ledgerRun），不进逐条台账。
+ *
+ * 库连接一律走 memoryStore 的 getMemoryDB：这个库有唯一 owner，
+ * 台账自己再 openDB 会跟它抢版本号（0.2.3 记忆页读不到数据的原因）。
  */
 
-const DB_NAME = 'chat-demo-memory'
 const STORE = 'usage'
 
 export type TokenUsageKind = 'digest' | 'compaction' | 'profile' | 'summary'
@@ -30,28 +32,7 @@ export type TokenUsageEntry = {
   at: number
 }
 
-interface MemoryDB extends DBSchema {
-  memories: { key: string; value: unknown }
-  vectors: { key: string; value: unknown }
-  usage: { key: string; value: TokenUsageEntry; indexes: { at: number } }
-}
-
-let dbPromise: Promise<IDBPDatabase<MemoryDB>> | null = null
-
-const getDB = () =>
-  (dbPromise ??= openDB<MemoryDB>(DB_NAME, 3, {
-    upgrade(db, oldVersion) {
-      if (!db.objectStoreNames.contains(STORE)) {
-        const store = db.createObjectStore(STORE, { keyPath: 'id' })
-        store.createIndex('at', 'at')
-      }
-      // 老库从 v1/v2 升上来只补 usage 表，memories / vectors 原封不动
-      void oldVersion
-    },
-  }).catch((error: unknown) => {
-    dbPromise = null
-    throw error
-  }))
+const getDB = getMemoryDB
 
 /** 四项之和；与 compaction.usageTokens 同一口径 */
 export const usageTotal = (entry: Pick<

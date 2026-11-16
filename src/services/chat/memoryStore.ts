@@ -1,5 +1,6 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb'
 import type { MemoryPage, MemoryQuery, MemoryRecord } from './memoryTypes.js'
+import type { TokenUsageEntry } from './tokenLedger.js'
 
 /**
  * 应用自带的本地记忆库。
@@ -15,6 +16,9 @@ const DB_NAME = 'chat-demo-memory'
 const STORE = 'memories'
 /** 向量单独放一张表：改模型时整表按 model 字段作废，不用碰记忆本体 */
 const VECTOR_STORE = 'vectors'
+/** token 台账同库；版本号由这一处统一管，别的模块不许自己 openDB（见下方 getMemoryDB 注释） */
+const USAGE_STORE = 'usage'
+const DB_VERSION = 3
 
 /** 存进库里的形态：与界面用的 MemoryRecord 一致，另存一个毫秒数便于按时间排序 */
 type StoredMemory = MemoryRecord & { at: number }
@@ -25,12 +29,23 @@ export type StoredVector = { id: string; model: string; vector: number[] }
 interface MemoryDB extends DBSchema {
   memories: { key: string; value: StoredMemory; indexes: { at: number } }
   vectors: { key: string; value: StoredVector; indexes: { model: string } }
+  usage: { key: string; value: TokenUsageEntry; indexes: { at: number } }
 }
 
 let dbPromise: Promise<IDBPDatabase<MemoryDB>> | null = null
 
-const getDB = () =>
-  (dbPromise ??= openDB<MemoryDB>(DB_NAME, 2, {
+/**
+ * 这个库只能从这里打开。
+ *
+ * IndexedDB 的版本号是库级别的：同一个库被两个模块用不同版本打开，
+ * 低版本那次会直接抛 VersionError；高版本那次升级又会把对方的连接关掉，
+ * 之后任何 transaction 都报 InvalidStateError。0.2.3 的记忆页读不到数据就是这么来的
+ * （tokenLedger 用 v3、memoryStore 用 v2，抢同一个库）。
+ *
+ * 所以版本号、升级逻辑、连接生命周期全部收在这里，其他模块只调这里导出的函数。
+ */
+export const getMemoryDB = (): Promise<IDBPDatabase<MemoryDB>> =>
+  (dbPromise ??= openDB<MemoryDB>(DB_NAME, DB_VERSION, {
     upgrade(db, oldVersion) {
       if (!db.objectStoreNames.contains(STORE)) {
         const store = db.createObjectStore(STORE, { keyPath: 'id' })
@@ -40,6 +55,11 @@ const getDB = () =>
       if (oldVersion < 2 && !db.objectStoreNames.contains(VECTOR_STORE)) {
         const store = db.createObjectStore(VECTOR_STORE, { keyPath: 'id' })
         store.createIndex('model', 'model')
+      }
+      // 版本 3 才有 token 台账表；从 v1/v2 上来只补 usage，memories / vectors 不动
+      if (oldVersion < 3 && !db.objectStoreNames.contains(USAGE_STORE)) {
+        const store = db.createObjectStore(USAGE_STORE, { keyPath: 'id' })
+        store.createIndex('at', 'at')
       }
     },
   }).catch((error: unknown) => {
@@ -76,7 +96,7 @@ const timeOf = (value: string | null | undefined): number => {
 
 /** 写一条；同一个 id（默认取 title）覆盖写。 */
 export const saveLocalMemory = async (input: LocalMemoryInput): Promise<void> => {
-  const db = await getDB()
+  const db = await getMemoryDB()
   const id = input.id ?? input.title
   const existing = await db.get(STORE, id)
   const now = new Date().toISOString()
@@ -129,7 +149,7 @@ const scopedStored = async (
   projectId: string | null | undefined,
   includeGlobal = false
 ): Promise<StoredMemory[]> => {
-  const all = (await (await getDB()).getAllFromIndex(STORE, 'at')).reverse()
+  const all = (await (await getMemoryDB()).getAllFromIndex(STORE, 'at')).reverse()
   return all.filter((record) => inScope(record, projectId, includeGlobal))
 }
 
@@ -148,7 +168,7 @@ export const listLocalMemories = async (query: MemoryQuery = {}): Promise<Memory
 /** 数条数；给了 projectId 就只数那一栏的（记忆页每个栏头都要显示自己的数） */
 export const countLocalMemories = async (projectId?: string | null): Promise<number> => {
   if (projectId === undefined) {
-    return (await getDB()).count(STORE)
+    return (await getMemoryDB()).count(STORE)
   }
   return (await scopedStored(projectId)).length
 }
@@ -172,7 +192,7 @@ export const countLocalMemoriesSince = async (
 }
 
 export const deleteLocalMemory = async (id: string): Promise<void> => {
-  const db = await getDB()
+  const db = await getMemoryDB()
   await db.delete(STORE, id)
   // 向量跟着记忆走，别留孤儿
   await db.delete(VECTOR_STORE, id)
@@ -180,22 +200,22 @@ export const deleteLocalMemory = async (id: string): Promise<void> => {
 
 /** 写一条记忆的向量；同一个 id 覆盖写 */
 export const saveLocalVector = async (vector: StoredVector): Promise<void> => {
-  await (await getDB()).put(VECTOR_STORE, vector)
+  await (await getMemoryDB()).put(VECTOR_STORE, vector)
 }
 
 /** 读一批记忆的向量，只认当前模型算出来的那些 */
 export const loadLocalVectors = async (model: string): Promise<StoredVector[]> =>
-  (await (await getDB()).getAllFromIndex(VECTOR_STORE, 'model')).filter(
+  (await (await getMemoryDB()).getAllFromIndex(VECTOR_STORE, 'model')).filter(
     (item) => item.model === model
   )
 
 /** 换模型时清空旧向量：新旧向量不同源，混着算距离会出垃圾结果 */
 export const clearLocalVectors = async (): Promise<void> => {
-  await (await getDB()).clear(VECTOR_STORE)
+  await (await getMemoryDB()).clear(VECTOR_STORE)
 }
 
-export const countLocalVectors = async (): Promise<number> => (await getDB()).count(VECTOR_STORE)
+export const countLocalVectors = async (): Promise<number> => (await getMemoryDB()).count(VECTOR_STORE)
 
 /** 导出全部记忆；换手机、换浏览器时靠它带走 */
 export const exportLocalMemories = async (): Promise<MemoryRecord[]> =>
-  (await (await getDB()).getAllFromIndex(STORE, 'at')).reverse().map(toRecord)
+  (await (await getMemoryDB()).getAllFromIndex(STORE, 'at')).reverse().map(toRecord)
