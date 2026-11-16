@@ -143,7 +143,9 @@ const sameSummary = (a: SessionSummary, b: SessionSummary) =>
   a.title === b.title &&
   a.createdAt === b.createdAt &&
   a.updatedAt === b.updatedAt &&
-  (a.projectId ?? null) === (b.projectId ?? null)
+  (a.projectId ?? null) === (b.projectId ?? null) &&
+  // 置顶只影响列表展示，不比它会让点「置顶」看起来毫无反应
+  (a.pinned ?? false) === (b.pinned ?? false)
 
 const sessionAccess = new Map<string, number>()
 const unsavedSessions = new Set<string>()

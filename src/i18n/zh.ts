@@ -101,7 +101,7 @@ export const zh = {
   memoryAutoDigestBatchHint: '一次最多整理几条，多了费钱也费时间',
   memoryAutoDigestBatchValue: '{count} 条',
   memoryVectorTitle: '按意思搜（可选）',
-  memoryVectorHint: '默认不需要配置：不填就按字面搜。填了才会把正文发给你的向量模型算一遍。',
+  memoryVectorHint: '不配置就按字面搜。推荐用硅基流动的免费向量模型：地址填 https://api.siliconflow.cn/v1，模型填 BAAI/bge-m3，再填一个硅基流动密钥就能按意思搜。',
   memoryVectorEnabledLabel: '启用向量检索',
   memoryVectorBaseUrlLabel: '向量模型地址',
   memoryVectorBaseUrlHint: 'OpenAI 兼容接口，例如 https://api.openai.com/v1',

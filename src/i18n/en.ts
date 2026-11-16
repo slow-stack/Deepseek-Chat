@@ -110,7 +110,7 @@ export const en = {
   memoryAutoDigestBatchValue: '{count} chats',
   memoryVectorTitle: 'Search by meaning (optional)',
   memoryVectorHint:
-    'Nothing to configure by default: leave it empty and search matches words. Fill it in and the text is sent to your own embedding model.',
+    'Leave it empty to match words only. Recommended free option: SiliconFlow — endpoint https://api.siliconflow.cn/v1, model BAAI/bge-m3, plus a SiliconFlow API key, and search works by meaning.',
   memoryVectorEnabledLabel: 'Enable vector search',
   memoryVectorBaseUrlLabel: 'Embedding endpoint',
   memoryVectorBaseUrlHint: 'OpenAI-compatible, e.g. https://api.openai.com/v1',
