@@ -56,8 +56,8 @@ export type InstallOutcome =
   | { ok: true; opened: true }
   /**
    * 用户点了取消。stopped＝原生确认下载已中断、半截文件已删；
-   * completed＝取消发得太晚，文件其实已经下完了（path 里是它的位置），只是没去调安装器。
-   * 两种对用户的含义不同，不能合成一句「已取消」。
+   * completed＝取消发得太晚，安装包其实已经下载并校验完成，只是没去调安装器。
+   * completed 一定带 path：界面上的「重试」靠它直接调安装器，不用重新下一遍。
    */
   | { ok: false; reason: 'cancelled'; detail: 'stopped' | 'completed'; path?: string }
   /** 还没授权：已经尽量把设置页打开，让用户回来重试 */
@@ -191,9 +191,13 @@ export const downloadAndInstall = async (options: InstallOptions): Promise<Insta
       ...(options.fileName ? { fileName: options.fileName } : {}),
     })
 
-    // 取消发得太晚：文件其实已经下完并校验过了。停在安装器之前，不替用户装。
+    // 取消发得太晚：安装包已经下完并校验过了。停在安装器之前，不替用户装，
+    // 但把 path 带回去——界面上的「重试」靠它直接调安装器，别再下一遍。
     if (options.isCancelled?.()) {
-      return { ok: false, reason: 'cancelled', detail: 'completed' }
+      const finished = downloaded.path ?? ''
+      return finished
+        ? { ok: false, reason: 'cancelled', detail: 'completed', path: finished }
+        : { ok: false, reason: 'cancelled', detail: 'completed' }
     }
 
     const path = downloaded.path ?? ''
@@ -220,6 +224,38 @@ export const downloadAndInstall = async (options: InstallOptions): Promise<Insta
     return { ok: false, reason, detail: parsed.message }
   } finally {
     removeListener?.()
+  }
+}
+
+/**
+ * 安装一个已经下好、校验过的包（「取消得晚」之后点重试走这里）。
+ *
+ * 不重新下载：包就在原生缓存里，直接推给系统安装器。失败归类与主流程一致，
+ * 只是没有进度可报。
+ */
+export const installFromPath = async (path: string): Promise<InstallOutcome> => {
+  const found = plugin()
+  if (!found) {
+    return { ok: false, reason: 'unavailable', detail: 'plugin missing' }
+  }
+  if (!(await canRequestInstall())) {
+    const settingsOpened = await openInstallSettings()
+    return { ok: false, reason: 'permission', settingsOpened }
+  }
+  try {
+    const installed = await found.install({ path })
+    if (installed.opened !== true) {
+      return { ok: false, reason: 'failed', detail: 'installer not opened' }
+    }
+    return { ok: true, opened: true }
+  } catch (error) {
+    const parsed = errorOf(error)
+    const reason = classify(parsed.code, parsed.message)
+    if (reason === 'permission') {
+      const settingsOpened = await openInstallSettings()
+      return { ok: false, reason: 'permission', settingsOpened }
+    }
+    return { ok: false, reason, detail: parsed.message }
   }
 }
 
