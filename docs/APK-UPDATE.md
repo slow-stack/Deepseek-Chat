@@ -23,6 +23,20 @@
 **切 release 签名是单独一次决定**：签名一换，用户机器上的旧包装不上新版，必须先卸载，
 所以不能夹在某次发版里悄悄换，要提前说。
 
+### 包名基线
+
+0.2.4 起 `applicationId` 从 `com.slowstack.ariadne` 改为 `com.slowstack.deepseekchat`，
+与已有的 `namespace` 对齐（`build.gradle`、`capacitor.config.json`、`strings.xml` 三处一起改）。
+
+换了 `applicationId` 就是另一个应用：装过旧包（`com.slowstack.ariadne`）的机器，
+新包不会被当成升级、旧包的数据也带不过来，必须先卸载旧包再装。之后再改包名同样要单独决定。
+
+### 版本号基线
+
+0.2.3 及以前 Android 工程的 `versionName` / `versionCode` 一直停在 `0.2.0` / `2`（版本号靠 web 侧的
+`application-version` 扛）。0.2.4 起 `build.gradle` 里同步为 `versionName "0.2.4"` / `versionCode 3`，
+以后每次发版都要跟着改，否则系统层看到的版本与面板显示的版本会脱节。
+
 ## 二、流程
 
 ```
