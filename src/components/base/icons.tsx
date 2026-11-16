@@ -663,3 +663,41 @@ export const IconContextOutline16 = () => (
     <path d="m3 17 9 4.5 9-4.5" />
   </svg>
 )
+
+/** 会话置顶：图钉 */
+export const IconPinOutline16 = () => (
+  <svg
+    width={16}
+    height={16}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.6}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path d="M12 17v5" />
+    <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1z" />
+  </svg>
+)
+
+/** 会话多选：带选中圆点的清单，参考 DeepSeek App 的多选入口 */
+export const IconSelectListOutline16 = () => (
+  <svg
+    width={16}
+    height={16}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.8}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <circle cx="4.5" cy="7" r="2" />
+    <path d="M10 7h11" />
+    <circle cx="4.5" cy="17" r="2" />
+    <path d="M10 17h11" />
+  </svg>
+)

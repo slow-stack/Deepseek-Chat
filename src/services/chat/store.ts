@@ -678,6 +678,24 @@ export const moveSessionToProject = (id: string, projectId: string | null) => {
   }
 }
 
+/** 置顶 / 取消置顶：置顶的会话在所属列表里排最前面，不改变更新时间。 */
+export const setSessionPinned = (id: string, pinned: boolean) => {
+  if (get().importingHistory || deletingSessions.has(id)) {
+    return
+  }
+  if (getSession(id)) {
+    updateSession(id, (session) => ({ ...session, pinned: pinned || undefined }))
+    persist(id)
+  } else {
+    set((state) => ({
+      sessions: state.sessions.map((session) =>
+        session.id === id ? { ...session, pinned: pinned || undefined } : session
+      ),
+    }))
+    void db.setSessionPinned(id, pinned).catch(db.reportStorageError('pin session'))
+  }
+}
+
 /**
  * 删除会话；本地原件仅在没有其他会话引用时清理。远端文件不删：导入、编辑、重新生成都会复用同一个附件，
  * 同一服务端文件可能被多个会话引用，不维护引用计数。

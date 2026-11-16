@@ -142,6 +142,8 @@ export type Session = {
   memoryEnabled?: boolean
   /** 所属项目；null / undefined 表示还没归到任何项目，留在按时间分组的列表里。 */
   projectId?: string | null
+  /** 置顶的会话排在所属列表最前面：未归类的进「置顶」分组，项目成员在项目内靠前。 */
+  pinned?: boolean
 }
 
 /**
@@ -157,7 +159,7 @@ export type SessionProject = {
 /** 会话列表元数据；消息只在打开会话时加载。 */
 export type SessionSummary = Pick<
   Session,
-  'id' | 'title' | 'createdAt' | 'updatedAt' | 'projectId'
+  'id' | 'title' | 'createdAt' | 'updatedAt' | 'projectId' | 'pinned'
 >
 
 /** 显式提取字段，避免将完整会话的消息带进列表。 */
@@ -167,4 +169,5 @@ export const toSessionSummary = (session: SessionSummary): SessionSummary => ({
   createdAt: session.createdAt,
   updatedAt: session.updatedAt,
   projectId: session.projectId ?? null,
+  pinned: session.pinned === true ? true : undefined,
 })
