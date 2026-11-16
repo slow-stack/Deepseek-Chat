@@ -1,10 +1,14 @@
 {
-  "versionName": "0.2.2",
-  "downloadUrl": "https://github.com/slow-stack/Deepseek-Chat/releases/tag/v0.2.2",
+  "versionName": "0.2.4",
+  "downloadUrl": "https://github.com/slow-stack/Deepseek-Chat/releases/download/v0.2.4/DeepseekChat-0.2.4-debug.apk",
   "highlights": [
-    "记忆注入走语义检索：配了向量接口后，提问能带上真正相关的记忆",
-    "删除会话的弹框无论成败都会关闭，失败有提示",
-    "更新检查走 commit 哈希地址，不再被 CDN 旧缓存卡住"
+    "这一版换了包名，装上是一个全新的 App：先在旧版里导出会话，再装新版导入（步骤见 Release 说明）",
+    "导出历史对话有了进度条：导到第几个、在打包还是写盘都看得见，中途能取消",
+    "App 里导出走系统保存框，ZIP 直接存到你挑的位置，不再点了没反应",
+    "修好 0.2.3 打开记忆页读不到数据的问题",
+    "桌面图标换成那只鲸鱼，一套到底；更新下载取消有明确结局"
   ],
-  "notes": "记忆注入走语义检索、删除弹框自动关闭、更新检查绕开 CDN 缓存。"
+  "notes": "这一版换了包名，是一个全新的 App：先在旧版里导出会话，装新版后把 ZIP 导入，确认搬完了再卸载旧版。导出带进度、记忆页修复、图标换成鲸鱼。",
+  "sha256": "caf3ec373b164a0a8096e93e8c8499d27934b8fefa3a2c3b75f3d63a507e272c",
+  "size": 6455605
 }
