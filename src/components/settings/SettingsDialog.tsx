@@ -22,7 +22,8 @@ import {
 import { currentVersion } from '../../services/update.js'
 import { runUpdateCheck, useUpdateBanner } from '../sider/updateBannerState.js'
 import { useIsMobile } from '../../app/viewport.js'
-import { isHistoryImportAborted, useChatStore } from '../../services/chat/store.js'
+import { isHistoryAbort, isHistoryImportAborted, useChatStore } from '../../services/chat/store.js'
+import { SaveCancelled } from '../../services/saveFile.js'
 import { regionCodes, getRegionName, provinces } from '../../services/location.js'
 import {
   isChineseBrowser,
@@ -733,7 +734,12 @@ const ExportHistory = ({ disabled }: { disabled: boolean }) => {
     setBusy(true)
     setStatus(null)
     try {
-      const { name, blob } = await exportHistory()
+      const { name, blob, saved } = await exportHistory()
+      if (saved) {
+        // App 里已经写进用户挑的位置，再走 link.click() 只会被 WebView 静默吞掉。
+        setStatus({ key: 'historyExportSaved', params: { name } })
+        return
+      }
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
@@ -741,7 +747,12 @@ const ExportHistory = ({ disabled }: { disabled: boolean }) => {
       link.click()
       setTimeout(() => URL.revokeObjectURL(url), 10_000)
     } catch (error) {
-      setStatus(errorStatus('historyExportFailed', error))
+      // 用户自己按了取消（取消导出，或在系统保存框里按了返回）不算失败。
+      setStatus(
+        isHistoryAbort(error) || error instanceof SaveCancelled
+          ? { key: 'historyExportCancelled' }
+          : errorStatus('historyExportFailed', error)
+      )
     } finally {
       setBusy(false)
     }
