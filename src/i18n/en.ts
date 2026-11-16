@@ -505,6 +505,8 @@ export const en = {
     'The download was incomplete — the connection probably dropped. Tap Retry to download again.',
   updateErrorTampered:
     'The package failed verification and may have been altered. Retry, or download in the browser instead.',
+  updateErrorMissing:
+    'The package you just downloaded was cleared from the cache. Tap Retry to download it again.',
   updateErrorUnavailable: "This device can't install it directly. Use the browser download.",
   updateErrorFailed: "The install didn't go through: {detail}",
   updateErrorFailedShort:

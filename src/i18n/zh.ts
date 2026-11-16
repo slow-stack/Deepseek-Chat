@@ -477,6 +477,7 @@ export const zh = {
   updatePermissionManual: '请到系统设置里允许本应用安装未知应用，然后回来点「重试」。',
   updateErrorIncomplete: '下载不完整，网络可能中断了。点「重试」重新下载。',
   updateErrorTampered: '安装包校验不通过，文件可能被改动过。请重试，或改用浏览器下载。',
+  updateErrorMissing: '刚才下好的安装包已经被系统清理掉了。点「重试」重新下载一份。',
   updateErrorUnavailable: '这台设备上没法直接安装，改用浏览器下载。',
   updateErrorFailed: '安装没走通：{detail}',
   updateErrorFailedShort: '安装没走通，可以重试，或改用浏览器下载。',
