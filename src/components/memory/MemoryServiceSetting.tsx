@@ -264,7 +264,7 @@ const VectorSetting = () => {
             <input
               className={styles.input}
               defaultValue={baseUrl}
-              placeholder="https://api.openai.com/v1"
+              placeholder="https://api.siliconflow.cn/v1"
               aria-label={t('memoryVectorBaseUrlLabel')}
               onBlur={(event) => setMemoryVectorBaseUrl(event.target.value)}
             />
@@ -275,7 +275,7 @@ const VectorSetting = () => {
             <input
               className={styles.input}
               defaultValue={model}
-              placeholder="text-embedding-3-small"
+              placeholder="BAAI/bge-m3"
               aria-label={t('memoryVectorModelLabel')}
               onBlur={(event) => setMemoryVectorModel(event.target.value)}
             />

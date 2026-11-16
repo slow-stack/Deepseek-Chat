@@ -143,7 +143,9 @@ const sameSummary = (a: SessionSummary, b: SessionSummary) =>
   a.title === b.title &&
   a.createdAt === b.createdAt &&
   a.updatedAt === b.updatedAt &&
-  (a.projectId ?? null) === (b.projectId ?? null)
+  (a.projectId ?? null) === (b.projectId ?? null) &&
+  // 置顶只影响列表展示，不比它会让点「置顶」看起来毫无反应
+  (a.pinned ?? false) === (b.pinned ?? false)
 
 const sessionAccess = new Map<string, number>()
 const unsavedSessions = new Set<string>()
@@ -1378,6 +1380,13 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
           getSession(sessionId),
           prepared.question.content
         ).catch(() => '')
+        // 注入成功与否在界面上毫无痕迹，用户没法分辨「没带」和「带了但模型没说」。
+        // 回复开头给一小段标记：条数在里头，模型看不见（发送前截掉）。
+        if (memoryContext) {
+          const count = (memoryContext.match(/^\d+\./gm) ?? []).length
+          reply = { ...reply, memoryNote: count }
+          updateReply(sessionId, reply)
+        }
         const events = streamMessage(
           useSettings.getState().apiKey ?? '',
           {

@@ -73,6 +73,7 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
   const [batchDeletePending, setBatchDeletePending] = useState(false)
   // 侧栏搜索：标题子串匹配，命中后直接平铺结果，不再按项目与时间分组
   const [query, setQuery] = useState('')
+const [searchOpen, setSearchOpen] = useState(false)
   const search = query.trim().toLowerCase()
   const matches = useMemo(
     () =>
@@ -167,6 +168,28 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
         <div className={styles.topLeft}>
           <div className={styles.appName}>{t('appName')}</div>
         </div>
+        {/* 搜索收成一个图标：常驻输入框占掉一整行，多数时候用不上。
+            点开就地展开输入框，清空或失焦回到图标；有词时保持展开。 */}
+        {searchOpen || query ? (
+          <IconButton
+            size="m"
+            icon={<IconCloseOutline16 />}
+            tooltip={t('siderSearchClear')}
+            tooltipPlacement="bottom"
+            onClick={() => {
+              setQuery('')
+              setSearchOpen(false)
+            }}
+          />
+        ) : (
+          <IconButton
+            size="m"
+            icon={<IconSearchOutline16 />}
+            tooltip={t('siderSearchPlaceholder')}
+            tooltipPlacement="bottom"
+            onClick={() => setSearchOpen(true)}
+          />
+        )}
         <IconButton
           size="m"
           icon={<IconPanelLeftOutline16 />}
@@ -189,7 +212,7 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
         </span>
         {t('newChat')}
       </button>
-      {selectMode ? null : (
+      {searchOpen || query ? (
         <div className={styles.search}>
           <span className={styles.searchIcon}>
             <IconSearchOutline16 />
@@ -199,6 +222,13 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
             value={query}
             placeholder={t('siderSearchPlaceholder')}
             aria-label={t('siderSearchPlaceholder')}
+            autoFocus
+            onBlur={(event) => {
+              // 没输入词就失焦收起，别让一个空输入框常驻
+              if (!event.target.value) {
+                setSearchOpen(false)
+              }
+            }}
             onChange={(event) => setQuery(event.target.value)}
           />
           {query ? (
@@ -212,7 +242,7 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
             </button>
           ) : null}
         </div>
-      )}
+      ) : null}
       {/* 列表头：参考 DeepSeek App，左边是可折叠的「置顶」，右边是多选入口；多选时换成已选计数与全选 */}
       <div className={styles.listHeader}>
         {selectMode ? (

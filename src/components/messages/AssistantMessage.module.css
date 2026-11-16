@@ -100,6 +100,13 @@
   transition: opacity var(--ds-transition-duration) var(--ds-ease-in-out);
 }
 
+/* 本轮带了几条记忆的小字：让人能分辨「没带」和「带了但模型没提」 */
+.memoryNote {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: var(--dsw-alias-font-xs-13);
+  white-space: nowrap;
+}
+
 .alwaysShow {
   opacity: 1;
 }

@@ -14,7 +14,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  /* 两个图标按钮挤在一起显得黏成一团，中间垫开一点 */
+  gap: 12px;
   box-sizing: border-box;
   height: 48px;
   margin-bottom: 16px;
@@ -326,7 +327,8 @@
   font-size: 14px;
   white-space: nowrap;
   text-overflow: ellipsis;
-  color: var(--dsw-alias-brand-primary);
+  /* 和会话标题同一色：入口是导航不是强调，蓝色让它看起来像链接 */
+  color: var(--dsw-alias-label-primary);
 }
 
 /* 插件入口：与底部设置同一套按钮样式，只有正在看的那一页留底色 */
