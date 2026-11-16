@@ -244,15 +244,18 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
             <Tooltip content={memoryEnabled ? t('memoryOnHint') : t('memoryOffHint')}>
               <button
                 type="button"
-                className={clsx(styles.toggle, memoryEnabled && styles.selected)}
+                className={clsx(
+                  styles.toggle,
+                  memoryEnabled ? styles.selected : styles.iconOnly
+                )}
                 aria-label={memoryEnabled ? t('memoryOn') : t('memoryOff')}
                 aria-pressed={memoryEnabled}
                 onClick={() => setMemoryEnabled(sessionId, !memoryEnabled)}
               >
                 <IconBrainOutline14 />
-                <span className={styles.toggleLabel}>
-                  {memoryEnabled ? t('memoryOn') : t('memoryOff')}
-                </span>
+                {/* 关掉时不写「记忆已关闭」：四个字占半行、还老在眼前提醒一件没发生的事。
+                    状态交给图标本身的暗色与 tooltip，想开的时候点它就行。 */}
+                {memoryEnabled ? <span className={styles.toggleLabel}>{t('memoryOn')}</span> : null}
               </button>
             </Tooltip>
           )}

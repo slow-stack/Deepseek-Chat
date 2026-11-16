@@ -34,6 +34,8 @@ export const zh = {
   memoryPanelTotal: '共 {count} 条',
   memoryPanelShownCount: '已显示 {count} 条',
   memoryPanelLoadMore: '加载更多',
+  memoryPanelDelete: '删除这条记忆',
+  memoryPanelDeleteFailed: '删不掉这条记忆',
   memoryServiceTitle: '记忆存放位置',
   memoryServiceLocal: '本机',
   memoryServiceLocalHint: '默认就在这里：跟着应用走，离线可用，不经过任何服务。',
@@ -50,6 +52,9 @@ export const zh = {
   memoryServiceReachable: '连上了，能读到记忆',
   memoryServiceUnreachable: '连不上，检查地址、token 和服务是否在跑',
   memoryPageSubtitle: '说过的话都留在这里，按时间倒序；想找哪句就搜哪句。',
+  memoryScopeAll: '全部',
+  memoryScopeGlobal: '全局',
+  memoryScopeLabel: '按归属查看记忆',
   memoryDigestOpen: '整理历史会话',
   memoryDigestTitle: '整理历史会话',
   memoryDigestIntro:

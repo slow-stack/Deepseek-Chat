@@ -62,6 +62,8 @@ export type LocalMemoryInput = {
   type?: string
   tags?: string[]
   importance?: number | null
+  /** 归属项目；不给就是全局记忆 */
+  projectId?: string | null
 }
 
 const timeOf = (value: string | null | undefined): number => {
@@ -90,6 +92,8 @@ export const saveLocalMemory = async (input: LocalMemoryInput): Promise<void> =>
     occurredAt: input.occurredAt ?? existing?.occurredAt ?? now,
     score: null,
     at: timeOf(input.occurredAt ?? existing?.occurredAt),
+    // 归属跟着写入方给的来；没给就沿用旧的（整理同一条会话时不会把项目归属洗掉）
+    projectId: input.projectId !== undefined ? input.projectId : (existing?.projectId ?? null),
   }
   await db.put(STORE, record)
 }
@@ -100,30 +104,70 @@ const matches = (record: MemoryRecord, needle: string): boolean =>
   record.content.toLowerCase().includes(needle) ||
   record.tags.some((tag) => tag.toLowerCase().includes(needle))
 
+/**
+ * 归属筛选：`undefined` 不过滤（全部），`null` 只留全局的，字符串只留那个项目的。
+ * 老记录没有 projectId 字段，读出来当全局处理。
+ * includeGlobal 为真时，除了那个项目的，也把全局的算进来。
+ */
+const inScope = (
+  record: MemoryRecord,
+  projectId: string | null | undefined,
+  includeGlobal = false
+): boolean => {
+  if (projectId === undefined) {
+    return true
+  }
+  const own = record.projectId ?? null
+  if (own === projectId) {
+    return true
+  }
+  return includeGlobal && own === null
+}
+
+/** 按归属取一批原始记录（带 at，计数要用）；顺序与列表一致，新的在前 */
+const scopedStored = async (
+  projectId: string | null | undefined,
+  includeGlobal = false
+): Promise<StoredMemory[]> => {
+  const all = (await (await getDB()).getAllFromIndex(STORE, 'at')).reverse()
+  return all.filter((record) => inScope(record, projectId, includeGlobal))
+}
+
 export const listLocalMemories = async (query: MemoryQuery = {}): Promise<MemoryPage> => {
-  const db = await getDB()
   const keyword = query.query?.trim().toLowerCase() ?? ''
   const limit = query.limit ?? 20
   const offset = query.offset ?? 0
-  const all = (await db.getAllFromIndex(STORE, 'at')).reverse().map(toRecord)
+  const scoped = (await scopedStored(query.projectId, query.includeGlobal)).map(toRecord)
   if (!keyword) {
-    return { items: all.slice(offset, offset + limit), total: all.length, mode: 'list' }
+    return { items: scoped.slice(offset, offset + limit), total: scoped.length, mode: 'list' }
   }
-  const hits = all.filter((record) => matches(record, keyword))
+  const hits = scoped.filter((record) => matches(record, keyword))
   return { items: hits.slice(offset, offset + limit), total: hits.length, mode: 'search' }
 }
 
-export const countLocalMemories = async (): Promise<number> => (await getDB()).count(STORE)
+/** 数条数；给了 projectId 就只数那一栏的（记忆页每个栏头都要显示自己的数） */
+export const countLocalMemories = async (projectId?: string | null): Promise<number> => {
+  if (projectId === undefined) {
+    return (await getDB()).count(STORE)
+  }
+  return (await scopedStored(projectId)).length
+}
 
 /** 按类型数条数：统计行要区分「对话原文」与「沉淀」 */
-export const countLocalMemoriesByType = async (type: string): Promise<number> => {
-  const all = await (await getDB()).getAllFromIndex(STORE, 'at')
+export const countLocalMemoriesByType = async (
+  type: string,
+  projectId?: string | null
+): Promise<number> => {
+  const all = await scopedStored(projectId)
   return all.filter((record) => record.type === type).length
 }
 
 /** 从某个时间点之后新增的条数，按写入顺序看 */
-export const countLocalMemoriesSince = async (since: number): Promise<number> => {
-  const all = await (await getDB()).getAllFromIndex(STORE, 'at')
+export const countLocalMemoriesSince = async (
+  since: number,
+  projectId?: string | null
+): Promise<number> => {
+  const all = await scopedStored(projectId)
   return all.filter((record) => record.at >= since).length
 }
 

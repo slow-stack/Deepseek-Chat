@@ -37,6 +37,8 @@ export const en = {
   memoryPanelTotal: '{count} in total',
   memoryPanelShownCount: '{count} shown',
   memoryPanelLoadMore: 'Load more',
+  memoryPanelDelete: 'Delete this memory',
+  memoryPanelDeleteFailed: 'Could not delete this memory',
   memoryServiceTitle: 'Where memory lives',
   memoryServiceLocal: 'This device',
   memoryServiceLocalHint: 'The default: travels with the app, works offline, passes through no service.',
@@ -55,6 +57,9 @@ export const en = {
   memoryServiceReachable: 'Connected — memory is readable',
   memoryServiceUnreachable: 'Cannot connect. Check the address, the token, and whether the service is running',
   memoryPageSubtitle: 'Everything you said stays here, newest first — search for any line.',
+  memoryScopeAll: 'All',
+  memoryScopeGlobal: 'Global',
+  memoryScopeLabel: 'Browse memories by scope',
   memoryDigestOpen: 'Tidy imported chats',
   memoryDigestTitle: 'Tidy imported chats',
   memoryDigestIntro:

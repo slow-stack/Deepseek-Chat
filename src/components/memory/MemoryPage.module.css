@@ -47,8 +47,57 @@
   line-height: 20px;
 }
 
+/* 归属切换：横向可滚的一排胶囊，项目多时不换行、不撑高页面 */
+.scopes {
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+  margin: 14px 0 2px;
+  padding-bottom: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.scopes::-webkit-scrollbar {
+  display: none;
+}
+
+.scope,
+.scopeActive {
+  flex-shrink: 0;
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 16px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font-size: var(--dsw-alias-font-xs-13);
+  line-height: 30px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.scope:hover {
+  background-color: var(--dsw-alias-bg-l2);
+}
+
+.scopeActive {
+  border-color: transparent;
+  background-color: var(--dsw-alias-brand-primary);
+  color: #ffffff;
+  font-weight: 500;
+}
+
+.scopeActive:hover {
+  background-color: var(--dsw-alias-brand-primary);
+}
+
 @media not all and (min-width: 768px) {
   .column {
     padding: 12px 16px 12px;
+  }
+
+  .scopes {
+    margin-top: 10px;
   }
 }

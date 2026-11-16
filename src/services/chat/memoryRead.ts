@@ -29,6 +29,8 @@ const normalizeRecord = (raw: Record<string, unknown>): MemoryRecord => ({
   createdAt: asString(raw.created_at) ?? asString(raw.createdAt),
   occurredAt: asString(raw.occurred_at) ?? asString(raw.occurredAt),
   score: asNumber(raw._score) ?? asNumber(raw.score),
+  // 远端服务不一定有归属；没有就当全局，界面不用为它单独分支
+  projectId: asString(raw.projectId) ?? asString(raw.project_id),
 })
 
 const buildUrl = (query: MemoryQuery, base: string) => {
@@ -36,10 +38,19 @@ const buildUrl = (query: MemoryQuery, base: string) => {
   const limit = query.limit ?? 20
   const offset = query.offset ?? 0
   const trimmed = base.replace(/\/+$/, '')
-  if (text) {
-    return `${trimmed}/search?q=${encodeURIComponent(text)}&topK=${limit}`
+  // 归属只在明确要看某一栏时才带上参数：不传就是「全部」，远端不必猜
+  const scope: string[] = []
+  if (query.projectId !== undefined) {
+    scope.push(`projectId=${query.projectId === null ? 'null' : encodeURIComponent(query.projectId)}`)
+    if (query.includeGlobal) {
+      scope.push('includeGlobal=1')
+    }
   }
-  return `${trimmed}/memories?limit=${limit}&offset=${offset}&order=desc`
+  const suffix = scope.length > 0 ? `&${scope.join('&')}` : ''
+  if (text) {
+    return `${trimmed}/search?q=${encodeURIComponent(text)}&topK=${limit}${suffix}`
+  }
+  return `${trimmed}/memories?limit=${limit}&offset=${offset}&order=desc${suffix}`
 }
 
 /**

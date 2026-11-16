@@ -30,6 +30,7 @@ import { runUpdateCheck } from '../components/sider/updateBannerState.js'
 import { autoDigest } from '../services/chat/memoryDigest.js'
 import { useEnabledPlugins } from '../plugins/registry.js'
 import { openChatPage, useAppPage } from './pageState.js'
+import { dismissBootSplash } from './bootSplash.js'
 import styles from './App.module.css'
 
 export const App = () => {
@@ -106,12 +107,31 @@ export const App = () => {
 
   // 打开应用时补一段自动整理：导入过的会话不能永远躺在列表里等人按按钮。
   // 等 chat 初始化完再跑——它要读会话表；跑在后台，失败也不弹窗。
+  // 手机上没人会主动退出应用，切走再回来是最常见的「下次打开」，所以回到前台
+  // 也要再问一次；间隔由 autoDigest 内部的 gap 挡，回前台再频繁也不会重复整理。
   useEffect(() => {
     if (!ready) {
       return
     }
     void autoDigest().catch(() => {})
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void autoDigest().catch(() => {})
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+    }
   }, [ready])
+
+  // 开屏动画（index.html 里的 #boot-splash）等会话就绪或初始化失败时让位；
+  // 它自己还有超时兜底，这里只负责正常路径。
+  useEffect(() => {
+    if (ready || initError) {
+      dismissBootSplash()
+    }
+  }, [ready, initError])
 
   return (
     <>

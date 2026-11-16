@@ -11,11 +11,12 @@
   color: var(--dsw-alias-label-primary);
   cursor: pointer;
 
+  /* 选中态只用底色 + 字重，不再加左侧那道 2px 竖线：
+     圆角 10px 的块上贴一根直角竖线，看着像没对齐的滚动条。 */
   &.active {
     background-color: var(--dsw-specific-sidebar-nav-item-active-accent);
     color: var(--dsw-alias-label-primary);
     font-weight: 500;
-    box-shadow: inset 2px 0 0 var(--dsw-alias-brand-primary);
   }
 
   @media (hover: hover) {
