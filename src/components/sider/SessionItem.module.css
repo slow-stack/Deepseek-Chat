@@ -42,6 +42,53 @@
   line-height: 18px;
 }
 
+/* 多选模式的选中态：整行铺一层品牌色底，与 active 的内边线区分 */
+.selected {
+  background-color: var(--dsw-specific-sidebar-nav-item-hover);
+}
+
+/* 多选复选点：参考 DeepSeek App 的圆圈勾选 */
+.checkbox {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 18px;
+  height: 18px;
+  margin-right: 10px;
+  border: 1.5px solid var(--dsw-alias-label-tertiary);
+  border-radius: 50%;
+  color: var(--dsw-alias-text-on-brand, #fff);
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+
+  svg {
+    width: 12px;
+    height: 12px;
+  }
+}
+
+.checkboxSelected {
+  border-color: var(--dsw-alias-button-primary-fill);
+  background-color: var(--dsw-alias-button-primary-fill);
+}
+
+/* 置顶角标：标题前的缩小版图钉 */
+.pin {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  margin-right: 6px;
+  color: var(--dsw-alias-label-tertiary);
+
+  svg {
+    width: 13px;
+    height: 13px;
+  }
+}
+
 .action {
   display: none;
   flex-shrink: 0;

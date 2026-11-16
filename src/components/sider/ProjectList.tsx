@@ -75,14 +75,18 @@ const ProjectNameModal = ({
 
 /**
  * 侧栏项目分组：会话按项目归类，成员会话只在这里出现，不再混进按时间分的列表。
- * 删项目只摘归类关系，会话本身留在列表里。
+ * 删项目只摘归类关系，会话本身留在列表里；置顶的成员排在项目内最前面。
  */
 export const ProjectList = ({
   activeId,
   onDelete,
+  selectMode = false,
+  selectedIds = [],
 }: {
   activeId: string | null
   onDelete: (session: SessionSummary) => void
+  selectMode?: boolean
+  selectedIds?: string[]
 }) => {
   const t = useTranslate()
   const projects = useChatStore((state) => state.projects)
@@ -92,7 +96,7 @@ export const ProjectList = ({
   const [renaming, setRenaming] = useState<SessionProject | null>(null)
   const [removing, setRemoving] = useState<SessionProject | null>(null)
 
-  // 一次遍历分好桶：会话数变化不用为每个项目重扫一遍。
+  // 一次遍历分好桶：会话数变化不用为每个项目重扫一遍。置顶的成员稳定地排到桶内最前面。
   const members = useMemo(() => {
     const buckets = new Map<string, SessionSummary[]>()
     for (const session of sessions) {
@@ -105,6 +109,14 @@ export const ProjectList = ({
         bucket.push(session)
       } else {
         buckets.set(projectId, [session])
+      }
+    }
+    for (const [projectId, bucket] of buckets) {
+      if (bucket.some((session) => session.pinned)) {
+        buckets.set(
+          projectId,
+          [...bucket.filter((session) => session.pinned), ...bucket.filter((session) => !session.pinned)]
+        )
       }
     }
     return buckets
@@ -179,6 +191,8 @@ export const ProjectList = ({
                       session={session}
                       active={session.id === activeId}
                       onDelete={onDelete}
+                      selectMode={selectMode}
+                      selected={selectedIds.includes(session.id)}
                     />
                   ))
                 : null}

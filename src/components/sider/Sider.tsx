@@ -2,15 +2,22 @@ import clsx from 'clsx'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslate } from '../../i18n/index.js'
 import {
+  IconChevronDownOutline14,
   IconCloseOutline16,
   IconPanelLeftOutline16,
   IconSearchOutline16,
+  IconSelectListOutline16,
   IconSettingsOutline16,
   NewChatIcon,
 } from '../base/icons.js'
 import { setSiderCollapsed } from '../../services/settings.js'
 import { groupSessions } from '../../services/chat/sessionGroups.js'
-import { newChat, removeSession, useChatStore } from '../../services/chat/store.js'
+import {
+  moveSessionToProject,
+  newChat,
+  removeSession,
+  useChatStore,
+} from '../../services/chat/store.js'
 import type { SessionSummary } from '../../services/chat/types.js'
 import { Button } from '../base/Button.js'
 import { IconButton } from '../base/IconButton.js'
@@ -20,25 +27,50 @@ import { openSettings } from '../settings/settingsDialogState.js'
 import { useEnabledPlugins } from '../../plugins/registry.js'
 import { openChatPage, openPage, useAppPage } from '../../app/pageState.js'
 import { closeMobileSider, useMobileSider } from './mobileSiderState.js'
+import {
+  enterSelectMode,
+  exitSelectMode,
+  setSelectedSessions,
+  useSelectMode,
+} from './selectModeState.js'
+import { MoveToProjectModal } from './MoveToProjectModal.js'
 import { ProjectList } from './ProjectList.js'
 import { SessionItem } from './SessionItem.js'
 import { UpdateBanner } from './UpdateBanner.js'
 import styles from './Sider.module.css'
 
-/** 展开的侧边栏：名称与收起按钮、开启新对话、按时间分组的会话列表、底部设置；移动端放在抽屉里，收起按钮关闭抽屉 */
+/** 展开的侧边栏：名称与收起按钮、开启新对话、置顶与项目、按时间分组的会话列表、底部设置；移动端放在抽屉里 */
 export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
   const t = useTranslate()
   const sessions = useChatStore((state) => state.sessions)
   const activeId = useChatStore((state) => state.activeId)
   const [now, setNow] = useState(Date.now)
-  // 归进项目的会话只在项目下显示，不再混进按时间分的分组
+  // 归进项目的会话只在项目下显示，不再混进按时间分的分组；置顶的浮到「置顶」分组
   const looseSessions = useMemo(
     () => sessions.filter((session) => !session.projectId),
     [sessions]
   )
-  const groups = useMemo(() => groupSessions(looseSessions, now, t), [looseSessions, now, t])
+  const pinnedSessions = useMemo(
+    () =>
+      looseSessions
+        .filter((session) => session.pinned)
+        .sort((a, b) => b.updatedAt - a.updatedAt),
+    [looseSessions]
+  )
+  const groups = useMemo(
+    () => groupSessions(looseSessions.filter((session) => !session.pinned), now, t),
+    [looseSessions, now, t]
+  )
   const [deleting, setDeleting] = useState<SessionSummary | null>(null)
   const [deletePending, setDeletePending] = useState(false)
+  // 置顶分组默认展开，收起状态记在侧栏本地
+  const [pinnedOpen, setPinnedOpen] = useState(true)
+  // 多选模式：清单图标进入，勾选会话后底部工具条批量删除 / 移动到项目
+  const selectMode = useSelectMode((state) => state.active)
+  const selectedIds = useSelectMode((state) => state.selectedIds)
+  const [batchMoving, setBatchMoving] = useState(false)
+  const [batchDeleting, setBatchDeleting] = useState(false)
+  const [batchDeletePending, setBatchDeletePending] = useState(false)
   // 侧栏搜索：标题子串匹配，命中后直接平铺结果，不再按项目与时间分组
   const [query, setQuery] = useState('')
   const search = query.trim().toLowerCase()
@@ -79,6 +111,56 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
 
   // 更新检查在 App 里统一触发，侧栏收起或移动端抽屉关着时也能提示
 
+  const enterSelect = () => {
+    setQuery('')
+    enterSelectMode()
+  }
+
+  // 全选/全不选：全部选中时再点一次清空
+  const allSelected = selectedIds.length > 0 && selectedIds.length === sessions.length
+  const toggleSelectAll = () => {
+    setSelectedSessions(allSelected ? [] : sessions.map((session) => session.id))
+  }
+
+  /** 批量删除：逐条走单个删除流程（停流、清缓存、清原件引用），失败的不从选择里去掉。 */
+  const deleteSelected = async () => {
+    setBatchDeletePending(true)
+    try {
+      const failed: string[] = []
+      for (const id of selectedIds) {
+        if (!(await removeSession(id))) {
+          failed.push(id)
+        }
+      }
+      if (failed.length === selectedIds.length) {
+        showToast({ key: 'sessionDeleteFailed', type: 'error' })
+      } else {
+        setSelectedSessions(failed)
+        if (failed.length === 0) {
+          exitSelectMode()
+        }
+      }
+    } finally {
+      setBatchDeletePending(false)
+    }
+  }
+
+  /** 批量移动到项目：选择集里的会话统一改 projectId，已在目标项目里的等于没动。 */
+  const moveSelectedToProject = (projectId: string) => {
+    for (const id of selectedIds) {
+      moveSessionToProject(id, projectId)
+    }
+    exitSelectMode()
+  }
+
+  const sessionItemProps = (session: SessionSummary) => ({
+    session,
+    active: session.id === activeId,
+    onDelete: () => setDeleting(session),
+    selectMode,
+    selected: selectedIds.includes(session.id),
+  })
+
   return (
     <div className={clsx(styles.sider, mobile && styles.mobile)}>
       <div className={styles.top}>
@@ -107,27 +189,70 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
         </span>
         {t('newChat')}
       </button>
-      <div className={styles.search}>
-        <span className={styles.searchIcon}>
-          <IconSearchOutline16 />
-        </span>
-        <input
-          className={styles.searchInput}
-          value={query}
-          placeholder={t('siderSearchPlaceholder')}
-          aria-label={t('siderSearchPlaceholder')}
-          onChange={(event) => setQuery(event.target.value)}
-        />
-        {query ? (
-          <button
-            type="button"
-            className={styles.searchClear}
-            aria-label={t('siderSearchClear')}
-            onClick={() => setQuery('')}
-          >
-            <IconCloseOutline16 />
-          </button>
-        ) : null}
+      {selectMode ? null : (
+        <div className={styles.search}>
+          <span className={styles.searchIcon}>
+            <IconSearchOutline16 />
+          </span>
+          <input
+            className={styles.searchInput}
+            value={query}
+            placeholder={t('siderSearchPlaceholder')}
+            aria-label={t('siderSearchPlaceholder')}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+          {query ? (
+            <button
+              type="button"
+              className={styles.searchClear}
+              aria-label={t('siderSearchClear')}
+              onClick={() => setQuery('')}
+            >
+              <IconCloseOutline16 />
+            </button>
+          ) : null}
+        </div>
+      )}
+      {/* 列表头：参考 DeepSeek App，左边是可折叠的「置顶」，右边是多选入口；多选时换成已选计数与全选 */}
+      <div className={styles.listHeader}>
+        {selectMode ? (
+          <>
+            <span className={styles.headerLabel}>{t('selectedCount', { count: selectedIds.length })}</span>
+            <span className={styles.headerActions}>
+              <button type="button" className={styles.headerButton} onClick={toggleSelectAll}>
+                {t('selectAll')}
+              </button>
+              <IconButton
+                size="m"
+                icon={<IconCloseOutline16 />}
+                tooltip={t('exitSelectSessions')}
+                onClick={exitSelectMode}
+              />
+            </span>
+          </>
+        ) : (
+          <>
+            {pinnedSessions.length > 0 ? (
+              <button
+                type="button"
+                className={clsx(styles.headerButton, styles.pinnedToggle)}
+                onClick={() => setPinnedOpen((value) => !value)}
+                aria-expanded={pinnedOpen}
+              >
+                {t('pinnedSectionTitle')}
+                <span className={clsx(styles.chevron, pinnedOpen && styles.chevronOpen)}>
+                  <IconChevronDownOutline14 />
+                </span>
+              </button>
+            ) : null}
+            <IconButton
+              size="m"
+              icon={<IconSelectListOutline16 />}
+              tooltip={t('selectSessions')}
+              onClick={enterSelect}
+            />
+          </>
+        )}
       </div>
       <div className={styles.listWrap}>
         <div className={styles.list}>
@@ -136,12 +261,7 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
               <div className={styles.section}>
                 <div className={styles.sectionHeader}>{t('siderSearchResults')}</div>
                 {matches.map((session) => (
-                  <SessionItem
-                    key={session.id}
-                    session={session}
-                    active={session.id === activeId}
-                    onDelete={setDeleting}
-                  />
+                  <SessionItem key={session.id} {...sessionItemProps(session)} />
                 ))}
               </div>
             ) : (
@@ -149,17 +269,24 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
             )
           ) : (
             <>
-              <ProjectList activeId={activeId} onDelete={setDeleting} />
+              {pinnedSessions.length > 0 && pinnedOpen ? (
+                <div className={styles.section}>
+                  {pinnedSessions.map((session) => (
+                    <SessionItem key={session.id} {...sessionItemProps(session)} />
+                  ))}
+                </div>
+              ) : null}
+              <ProjectList
+                activeId={activeId}
+                onDelete={setDeleting}
+                selectMode={selectMode}
+                selectedIds={selectedIds}
+              />
               {groups.map((group) => (
                 <div key={group.key} className={styles.section}>
                   <div className={styles.sectionHeader}>{group.label}</div>
                   {group.sessions.map((session) => (
-                    <SessionItem
-                      key={session.id}
-                      session={session}
-                      active={session.id === activeId}
-                      onDelete={setDeleting}
-                    />
+                    <SessionItem key={session.id} {...sessionItemProps(session)} />
                   ))}
                 </div>
               ))}
@@ -167,6 +294,24 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
           )}
         </div>
       </div>
+      {selectMode ? (
+        <div className={styles.batchBar}>
+          <Button
+            variant="primary"
+            disabled={selectedIds.length === 0}
+            onClick={() => setBatchMoving(true)}
+          >
+            {t('moveToProject')}
+          </Button>
+          <Button
+            variant="danger"
+            disabled={selectedIds.length === 0}
+            onClick={() => setBatchDeleting(true)}
+          >
+            {t('delete')}
+          </Button>
+        </div>
+      ) : null}
       <UpdateBanner />
       <div className={styles.bottom}>
         {plugins.map((plugin) => (
@@ -226,6 +371,38 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
           }
         >
           {t('deleteSessionWithFilesDescription')}
+        </Modal>
+      ) : null}
+      {batchMoving ? (
+        <MoveToProjectModal
+          onPick={moveSelectedToProject}
+          onClose={() => setBatchMoving(false)}
+        />
+      ) : null}
+      {batchDeleting ? (
+        <Modal
+          title={t('deleteSessionsModalContentTitle', { count: selectedIds.length })}
+          onClose={() => {
+            if (!batchDeletePending) {
+              setBatchDeleting(false)
+            }
+          }}
+          footer={
+            <>
+              <Button
+                variant="outlined"
+                disabled={batchDeletePending}
+                onClick={() => setBatchDeleting(false)}
+              >
+                {t('cancel')}
+              </Button>
+              <Button variant="danger" disabled={batchDeletePending} onClick={deleteSelected}>
+                {t('delete')}
+              </Button>
+            </>
+          }
+        >
+          {t('deleteSessionsDescription')}
         </Modal>
       ) : null}
     </div>
