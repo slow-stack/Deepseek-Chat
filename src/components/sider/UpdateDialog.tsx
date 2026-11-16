@@ -24,7 +24,7 @@ import styles from './UpdateDialog.module.css'
  */
 type Phase = 'idle' | 'downloading' | 'verifying' | 'cancelling' | 'late' | 'permission' | 'failed'
 
-type FailureKind = 'incomplete' | 'tampered' | 'unavailable' | 'failed'
+type FailureKind = 'missing' | 'incomplete' | 'tampered' | 'unavailable' | 'failed'
 
 /** 进度条上的百分比；拿不到总长时显示已下载的字节数 */
 const progressText = (bytes: number, total: number | null) => {
@@ -123,6 +123,9 @@ const DialogBody = () => {
   /**
    * 「取消得晚」之后点重试：包已经在原生缓存里下好并校验过了，
    * 直接推给系统安装器，不用再等一次下载。拿不到 path 时退回整包重下。
+   *
+   * 包在这期间被系统清掉、原生报 E_MISSING_FILE：不能只报一句失败就完了，
+   * 包已经不在了，唯一的出路是重新下载——直接走回 start()。
    */
   const installLate = useCallback(async () => {
     if (!latePath) {
@@ -142,7 +145,9 @@ const DialogBody = () => {
       setPhase('permission')
       return
     }
-    if (outcome.reason === 'cancelled') {
+    if (outcome.reason === 'missing') {
+      setLatePath(null)
+      void start()
       return
     }
     setFailure({ kind: outcome.reason, ...(outcome.detail ? { detail: outcome.detail } : {}) })
@@ -171,6 +176,9 @@ const DialogBody = () => {
     }
     if (failure.kind === 'tampered') {
       return t('updateErrorTampered')
+    }
+    if (failure.kind === 'missing') {
+      return t('updateErrorMissing')
     }
     if (failure.kind === 'unavailable') {
       return t('updateErrorUnavailable')

@@ -9,6 +9,7 @@
  *   - cancelled：用户自己点的取消，原生确认已经停了（不是失败，界面该安静回位）；
  *   - incomplete：字节数不对，重下一次大概率就好了；
  *   - tampered：字节数对但哈希不对，来源有问题，要重下并说清文件不对；
+ *   - missing：安装包已从缓存里消失（系统清理过），只能重新下载；
  *   - permission：用户还没给「安装未知应用」授权，引导去设置页；
  *   - unavailable：插件不在（网页）或系统没有安装器，退回浏览器。
  */
@@ -45,24 +46,29 @@ export const canInstallInApp = (): boolean => plugin() !== null
 
 export type InstallFailure =
   | 'cancelled'
+  | 'missing'
   | 'incomplete'
   | 'tampered'
   | 'permission'
   | 'unavailable'
   | 'failed'
 
-export type InstallOutcome =
+/** 一次安装尝试不会有「用户取消」，单独抽出来，调用方就不必去处理走不到的分支 */
+export type InstallAttempt =
   /** 系统安装器已经起来了，后面用户自己点「安装」 */
   | { ok: true; opened: true }
+  /** 还没授权：已经尽量把设置页打开，让用户回来重试 */
+  | { ok: false; reason: 'permission'; settingsOpened: boolean }
+  | { ok: false; reason: Exclude<InstallFailure, 'cancelled' | 'permission'>; detail?: string }
+
+export type InstallOutcome =
+  | InstallAttempt
   /**
    * 用户点了取消。stopped＝原生确认下载已中断、半截文件已删；
    * completed＝取消发得太晚，安装包其实已经下载并校验完成，只是没去调安装器。
    * completed 一定带 path：界面上的「重试」靠它直接调安装器，不用重新下一遍。
    */
   | { ok: false; reason: 'cancelled'; detail: 'stopped' | 'completed'; path?: string }
-  /** 还没授权：已经尽量把设置页打开，让用户回来重试 */
-  | { ok: false; reason: 'permission'; settingsOpened: boolean }
-  | { ok: false; reason: Exclude<InstallFailure, 'cancelled' | 'permission'>; detail?: string }
 
 export type InstallOptions = {
   url: string
@@ -83,6 +89,9 @@ const classify = (code: string | undefined, message: string): Exclude<InstallFai
   }
   if (text.includes('E_HASH_MISMATCH')) {
     return 'tampered'
+  }
+  if (text.includes('E_MISSING_FILE')) {
+    return 'missing'
   }
   if (text.includes('E_NO_PERMISSION')) {
     return 'permission'
@@ -232,8 +241,12 @@ export const downloadAndInstall = async (options: InstallOptions): Promise<Insta
  *
  * 不重新下载：包就在原生缓存里，直接推给系统安装器。失败归类与主流程一致，
  * 只是没有进度可报。
+ *
+ * 返回类型是 InstallAttempt 而不是 InstallOutcome：这里没有下载，也就没有被用户
+ * 半途取消的余地，调用方不必处理一个永远走不到的分支。包被系统清理掉时归
+ * 'missing'，界面据此退回正常下载流程。
  */
-export const installFromPath = async (path: string): Promise<InstallOutcome> => {
+export const installFromPath = async (path: string): Promise<InstallAttempt> => {
   const found = plugin()
   if (!found) {
     return { ok: false, reason: 'unavailable', detail: 'plugin missing' }
