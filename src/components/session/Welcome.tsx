@@ -19,17 +19,32 @@ const greetingKey = (hour: number): 'welcomeMorning' | 'welcomeAfternoon' | 'wel
   return 'welcomeNight'
 }
 
+/** 问候后面接的那句话，从这堆里随机抽一个，免得每次进来都一样 */
+const followUpKeys = [
+  'welcomeFollowHelp1',
+  'welcomeFollowHelp2',
+  'welcomeFollowChat',
+  'welcomeFollowBack1',
+  'welcomeFollowBack2',
+] as const
+
+const pickFollowUp = (): (typeof followUpKeys)[number] => {
+  return followUpKeys[Math.floor(Math.random() * followUpKeys.length)]
+}
+
 /** 新对话：问候语 + 输入框。桌面端居中；移动端输入框吸底 */
 export const Welcome = () => {
   const t = useTranslate()
   const isMobile = useIsMobile()
   // 组件挂载时取一次就够：欢迎页停留不过夜，不必挂着定时器轮换
-  const [greeting] = useState(() => t(greetingKey(new Date().getHours())))
+  const [lines] = useState<[string, string]>(() => [t(greetingKey(new Date().getHours())), t(pickFollowUp())])
   return (
     <div className={styles.container}>
       {isMobile ? <MobileHeader /> : null}
       <div className={styles.welcome}>
-        <div className={styles.greeting}>{greeting}</div>
+        <div className={styles.greeting}>
+          {lines[0]}，{lines[1]}
+        </div>
         <ChatInput sessionId={null} />
         {isMobile ? <div className={styles.caveat}>{t('contentCaveat')}</div> : null}
       </div>
