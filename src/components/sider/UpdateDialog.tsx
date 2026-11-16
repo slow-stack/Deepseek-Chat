@@ -5,6 +5,7 @@ import {
   cancelInstall,
   downloadAndInstall,
   fileNameFromUrl,
+  installFromPath,
   type InstallOutcome,
 } from '../../services/apkUpdate.js'
 import { Button } from '../base/Button.js'
@@ -49,6 +50,8 @@ const DialogBody = () => {
   const [percent, setPercent] = useState<{ bytes: number; total: number | null } | null>(null)
   const [failure, setFailure] = useState<{ kind: FailureKind; detail?: string } | null>(null)
   const [settingsOpened, setSettingsOpened] = useState(false)
+  /** 「取消得晚」时已经下好并校验过的包；重试直接装它，不再下一遍 */
+  const [latePath, setLatePath] = useState<string | null>(null)
   const cancelled = useRef(false)
   const mounted = useRef(true)
 
@@ -66,6 +69,7 @@ const DialogBody = () => {
     cancelled.current = false
     setFailure(null)
     setPercent(null)
+    setLatePath(null)
     setPhase('downloading')
 
     const outcome: InstallOutcome = await downloadAndInstall({
@@ -102,6 +106,8 @@ const DialogBody = () => {
         setPhase('idle')
         return
       }
+      // 包已经下好校验过了：记住它的位置，重试直接拿去装，不复述一遍下载
+      setLatePath(outcome.path ?? null)
       setPhase('late')
       return
     }
@@ -113,6 +119,35 @@ const DialogBody = () => {
     setFailure({ kind: outcome.reason, ...(outcome.detail ? { detail: outcome.detail } : {}) })
     setPhase('failed')
   }, [update])
+
+  /**
+   * 「取消得晚」之后点重试：包已经在原生缓存里下好并校验过了，
+   * 直接推给系统安装器，不用再等一次下载。拿不到 path 时退回整包重下。
+   */
+  const installLate = useCallback(async () => {
+    if (!latePath) {
+      void start()
+      return
+    }
+    const outcome = await installFromPath(latePath)
+    if (!mounted.current) {
+      return
+    }
+    if (outcome.ok) {
+      closeUpdateDialog()
+      return
+    }
+    if (outcome.reason === 'permission') {
+      setSettingsOpened(outcome.settingsOpened)
+      setPhase('permission')
+      return
+    }
+    if (outcome.reason === 'cancelled') {
+      return
+    }
+    setFailure({ kind: outcome.reason, ...(outcome.detail ? { detail: outcome.detail } : {}) })
+    setPhase('failed')
+  }, [latePath, start])
 
   if (!update) {
     return null
@@ -182,7 +217,12 @@ const DialogBody = () => {
           <Button
             variant="primary"
             onClick={() => {
+              // 授权回来时包还在缓存里就别重下：先回 idle 视觉态，再决定装还是重来
               setPhase('idle')
+              if (latePath) {
+                void installLate()
+                return
+              }
               void start()
             }}
           >
@@ -197,7 +237,17 @@ const DialogBody = () => {
           {t('updateLater')}
         </Button>
         {inApp ? (
-          <Button variant="primary" onClick={() => void start()}>
+          <Button
+            variant="primary"
+            onClick={() => {
+              // 「取消得晚」且包里还留着位置：直接装，不再下一遍
+              if (phase === 'late' && latePath) {
+                void installLate()
+                return
+              }
+              void start()
+            }}
+          >
             {phase === 'failed' || phase === 'late' ? t('updateRetry') : t('updateDownloadAndInstall')}
           </Button>
         ) : (
