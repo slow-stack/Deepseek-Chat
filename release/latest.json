@@ -1,11 +1,10 @@
 {
-  "versionName": "0.2.1",
-  "downloadUrl": "https://github.com/slow-stack/Deepseek-Chat/releases/tag/v0.2.1",
+  "versionName": "0.2.2",
+  "downloadUrl": "https://github.com/slow-stack/Deepseek-Chat/releases/tag/v0.2.2",
   "highlights": [
-    "会话可置顶，置顶分组可折叠",
-    "多选模式：长按进入，批量删除会话",
-    "「移动到项目」改为弹窗选择目标项目",
-    "新对话按时段问好：上午好 / 下午好 / 晚上好 / 夜深了，问候后随机接一句"
+    "记忆注入走语义检索：配了向量接口后，提问能带上真正相关的记忆",
+    "删除会话的弹框无论成败都会关闭，失败有提示",
+    "更新检查走 commit 哈希地址，不再被 CDN 旧缓存卡住"
   ],
-  "notes": "会话置顶、多选批量删除、移动到项目改弹窗、欢迎页时段问候。"
+  "notes": "记忆注入走语义检索、删除弹框自动关闭、更新检查绕开 CDN 缓存。"
 }
