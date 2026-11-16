@@ -206,6 +206,7 @@ export const en = {
   balanceRefresh: 'Refresh',
   messageSearchSummary: '1 web page',
   messageSearchSummaries: '{count} web pages',
+  messageMemoryNote: '{count} memories used',
   messageVersions: 'Message versions',
   previousVersion: 'Previous version',
   nextVersion: 'Next version',

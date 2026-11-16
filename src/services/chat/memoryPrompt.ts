@@ -41,8 +41,9 @@ const formatItem = (item: MemoryRecord, index: number): string => {
 }
 
 /**
- * 检索一条查询：配了向量接口就先走语义，没配或语义不可用回落字面匹配。
- * 字面匹配对自然语言提问命中率很低（面板搜索早就是语义优先），注入不该比面板差。
+ * 检索一条查询：配了向量接口就先走语义；语义不可用、或字面也一个没中时，
+ * 回落到最近的记忆——闲聊里说的事（名字、偏好、近况）多半就在最近几轮里，
+ * 字面匹配对这种内容几乎必然脱靶，宁可带几条近的也别空手。
  */
 export const retrieveMemories = async (
   query: string,
@@ -54,7 +55,15 @@ export const retrieveMemories = async (
     return { items: vectorPage.items, mode: 'vector' }
   }
   const page = await loadMemories(scoped)
-  return { items: page.items, mode: page.mode ?? 'list' }
+  if (page.items.length > 0) {
+    return { items: page.items, mode: page.mode ?? 'search' }
+  }
+  const recent = await loadMemories({
+    limit: MEMORY_LIMIT,
+    projectId,
+    includeGlobal: projectId !== null,
+  })
+  return { items: recent.items, mode: 'recent' }
 }
 
 /** 拼成一段纯文本；没有任何命中时返回空串，调用方据此决定要不要改 system。 */

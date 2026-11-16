@@ -192,6 +192,7 @@ export const zh = {
   balanceRefresh: '刷新',
   messageSearchSummary: '1 个网页',
   messageSearchSummaries: '{count} 个网页',
+  messageMemoryNote: '带了 {count} 条记忆',
   messageVersions: '消息版本',
   previousVersion: '上一个版本',
   nextVersion: '下一个版本',
