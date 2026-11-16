@@ -15,8 +15,13 @@ import styles from './UpdateDialog.module.css'
 /**
  * 升级流程的状态。App 里走「下载 → 校验 → 调起系统安装器」，
  * 网页里没有原生插件，直接退化成浏览器下载（phase 一直是 'idle'）。
+ *
+ * 'cancelling' 是「取消已经按了、还在等原生确认」。这个中间态必须留住：
+ * 真正停下来的证据是原生回报，不是按钮点下去那一刻。如果取消没生效，
+ * 进度条会继续往前走，一眼就能看出来，而不是界面先跳回空闲骗人。
+ * 'late' 是取消得太晚——文件已经下完校验过了，只是没去装。
  */
-type Phase = 'idle' | 'downloading' | 'verifying' | 'permission' | 'failed'
+type Phase = 'idle' | 'downloading' | 'verifying' | 'cancelling' | 'late' | 'permission' | 'failed'
 
 type FailureKind = 'incomplete' | 'tampered' | 'unavailable' | 'failed'
 
@@ -84,16 +89,20 @@ const DialogBody = () => {
       return
     }
 
-    // 用户自己按了「取消下载」：静静回到初始状态，不该报错
-    if (cancelled.current) {
-      setPercent(null)
-      setPhase('idle')
-      return
-    }
-
+    // 用户自己按了取消：以原生回报的结局为准，不在这里擅自回位。
+    // 收到 stopped 才安静回到初始状态；收到 completed 说明停晚了。
     if (outcome.ok) {
       // 系统安装器已经起来了：收掉弹窗，别挡在安装界面后面
       closeUpdateDialog()
+      return
+    }
+    if (outcome.reason === 'cancelled') {
+      if (outcome.detail === 'stopped') {
+        setPercent(null)
+        setPhase('idle')
+        return
+      }
+      setPhase('late')
       return
     }
     if (outcome.reason === 'permission') {
@@ -116,7 +125,7 @@ const DialogBody = () => {
       : []
 
   const inApp = canInstallInApp()
-  const busy = phase === 'downloading' || phase === 'verifying'
+  const busy = phase === 'downloading' || phase === 'verifying' || phase === 'cancelling'
 
   const failureText = () => {
     if (!failure) {
@@ -141,11 +150,19 @@ const DialogBody = () => {
           variant="outlined"
           onClick={() => {
             cancelled.current = true
+            // 先进「正在取消」：等原生确认停下来再回位。按钮点下去不等于停了。
+            setPhase('cancelling')
             void cancelInstall()
-            setPhase('idle')
           }}
         >
           {t('updateCancel')}
+        </Button>
+      )
+    }
+    if (phase === 'cancelling') {
+      return (
+        <Button variant="outlined" disabled>
+          {t('updateCancelling')}
         </Button>
       )
     }
@@ -181,7 +198,7 @@ const DialogBody = () => {
         </Button>
         {inApp ? (
           <Button variant="primary" onClick={() => void start()}>
-            {phase === 'failed' ? t('updateRetry') : t('updateDownloadAndInstall')}
+            {phase === 'failed' || phase === 'late' ? t('updateRetry') : t('updateDownloadAndInstall')}
           </Button>
         ) : (
           <a
@@ -226,7 +243,7 @@ const DialogBody = () => {
         <div className={styles.notes}>{t('updateDialogNoNotes')}</div>
       )}
 
-      {phase === 'downloading' ? (
+      {phase === 'downloading' || phase === 'cancelling' ? (
         <div className={styles.progress}>
           <div className={styles.progressTrack}>
             <div
@@ -239,7 +256,11 @@ const DialogBody = () => {
             />
           </div>
           <div className={styles.progressText}>
-            {percent ? progressText(percent.bytes, percent.total) : t('updateDownloading')}
+            {phase === 'cancelling'
+              ? `${t('updateCancelling')} ${percent ? progressText(percent.bytes, percent.total) : ''}`.trim()
+              : percent
+                ? progressText(percent.bytes, percent.total)
+                : t('updateDownloading')}
           </div>
         </div>
       ) : null}
@@ -247,6 +268,10 @@ const DialogBody = () => {
       {phase === 'verifying' ? (
         <div className={styles.progressText}>{t('updateVerifying')}</div>
       ) : null}
+
+      {phase === 'cancelling' ? <div className={styles.hint}>{t('updateCancellingHint')}</div> : null}
+
+      {phase === 'late' ? <div className={styles.hint}>{t('updateCancelTooLate')}</div> : null}
 
       {phase === 'permission' ? (
         <div className={styles.hint}>

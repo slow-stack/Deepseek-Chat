@@ -492,6 +492,9 @@ export const en = {
   updateDownloading: 'Downloading…',
   updateVerifying: 'Verifying the package…',
   updateCancel: 'Cancel download',
+  updateCancelling: 'Cancelling…',
+  updateCancellingHint: 'The downloader has been told to stop. If the progress keeps moving, it has not stopped yet — wait for it.',
+  updateCancelTooLate: 'Cancelled a little late: the update package finished downloading and verifying, but nothing was installed. Tap “Retry” to install it.',
   updateRetry: 'Retry',
   updateBrowserDownload: 'Download in browser',
   updatePermissionOpened:
