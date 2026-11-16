@@ -13,19 +13,33 @@ App 启动时会取这个文件（`raw.githubusercontent.com/slow-stack/Deepseek
 | `downloadUrl` | 点「去下载」打开的地址，通常是这条版本的 Release 页 |
 | `highlights` | 这次改了哪几条，字符串数组，弹窗按条列出；三到五条最合适 |
 | `notes` | 一句话说明这次改了什么；没有 `highlights` 时弹窗显示这一句，侧栏提示也用它 |
+| `sha256` | APK 的 SHA-256（十六进制，可带 `sha256:` 前缀），App 下载完核校验用 |
+| `size` | APK 字节数，用来把「没下完」和「文件被改过」分开报 |
 
 `highlights` 和 `notes` 都可以不写，弹窗会显示「这次没有写更新说明」。
 写了 `highlights` 就优先按条显示，`notes` 仍然会出现在侧栏提示条里。
+
+`sha256` 与 `size` **不要手填**，用脚本从打完的 APK 里算：
+
+```powershell
+node scripts/release-manifest.mjs --apk <APK 路径> --version 0.2.4
+```
+
+脚本只改 `versionName` / `downloadUrl` / `sha256` / `size` 四个字段，`highlights` 和 `notes` 原样保留。
+加上 `--dry-run` 可以先看它算出来的值，不落盘。清单里缺 `sha256` 时 App 仍能装，只是不核哈希。
 
 ## 发一个版本
 
 1. 改 `package.json` 的 `version`（例如 `0.1.2`），重新构建 App 与 APK。
 2. 把 APK 传到 GitHub Release，标签用 `v0.1.2`。
-3. 把本文件的 `versionName` 改成 `0.1.2`、`downloadUrl` 指向那个 Release，`highlights` 逐条写清改了什么。**版本号必须比用户手上的新，弹窗才会出现。**
+3. 跑 `node scripts/release-manifest.mjs --apk <APK 路径> --version 0.1.2`，
+   `versionName` / `downloadUrl` / `sha256` / `size` 会一起写好；再补 `highlights` 逐条写清改了什么。**版本号必须比用户手上的新，弹窗才会出现。**
 4. 提交到 `main`。之后所有旧版本的 App 下次启动就会看到提示（每 6 小时最多问一次）。
 
 ## 注意
 
 - 旁装的 App 没法静默更新：下载完还要在系统安装器里点一次确认，这是 Android 的规矩，不是没做。
+  0.2.4 起 App 内能下载并校验，用户只在系统安装器里点确认；网页里仍是浏览器下载。
+  细节见 [docs/APK-UPDATE.md](../docs/APK-UPDATE.md)。
 - 清单取不到（断网、地址写错、格式不对）时什么也不提示，不会打扰用户；只有手点「检查更新」才会明说连不上。
 - 本地验证时可以用 `AR_UPDATE_MANIFEST=http://127.0.0.1:8100/latest.json npm run build` 指到别的地址。

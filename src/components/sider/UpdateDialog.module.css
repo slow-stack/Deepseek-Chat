@@ -69,3 +69,77 @@
 .download:hover {
   background-color: var(--dsw-alias-button-primary-hover);
 }
+
+/* 升级失败时的「改用浏览器下载」不是主按钮，用描边样式区分 */
+.downloadSecondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 72px;
+  height: var(--ds-control-height-l);
+  padding: 0 14px;
+  border: 1px solid var(--dsw-alias-line-default);
+  border-radius: 4096px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 22px;
+  color: var(--dsw-alias-label-primary);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.downloadSecondary:hover {
+  background-color: var(--dsw-alias-bg-hover);
+}
+
+.progress {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.progressTrack {
+  overflow: hidden;
+  height: 6px;
+  border-radius: 4096px;
+  background-color: var(--dsw-alias-bg-default-2);
+}
+
+.progressBar {
+  height: 100%;
+  border-radius: 4096px;
+  background-color: var(--dsw-alias-brand-primary);
+  transition: width 0.2s ease;
+}
+
+.progressText {
+  margin-top: 12px;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.hint {
+  margin-top: 12px;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.error {
+  margin-top: 12px;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--dsw-alias-label-error, #d92d20);
+}
+
+.fallbackLink {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--dsw-alias-brand-primary);
+  text-decoration: underline;
+}
