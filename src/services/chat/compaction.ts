@@ -2,6 +2,7 @@ import { streamMessage } from '../api/client.js'
 import { modelFor } from '../api/endpoints.js'
 import type { ChatModel, MessageParam } from '../api/types.js'
 import { getContextRounds, getReplyText } from './reply.js'
+import { recordTokenUsage } from './tokenLedger.js'
 import type {
   AssistantMessage,
   Message,
@@ -161,7 +162,7 @@ export const buildLocalSummary = (
   return `${head ? `${head}\n\n` : ''}${lines.join('\n')}`.slice(0, SUMMARY_MAX_CHARS)
 }
 
-/** 调模型压缩：一次普通请求，只取正文 */
+/** 调模型压缩：一次普通请求，取正文并把用量记进 token 台账 */
 const requestModelSummary = async (
   previous: string | undefined,
   rounds: readonly (readonly [UserMessage, AssistantMessage])[],
@@ -198,6 +199,9 @@ const requestModelSummary = async (
   for await (const event of events) {
     if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
       text += event.delta.text
+    }
+    if (event.type === 'message_delta' && event.usage) {
+      void recordTokenUsage('compaction', event.usage)
     }
   }
   return text.trim().slice(0, SUMMARY_MAX_CHARS)
