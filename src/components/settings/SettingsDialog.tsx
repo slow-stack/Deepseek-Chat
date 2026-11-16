@@ -44,7 +44,6 @@ import { Select } from '../base/Select.js'
 import { showToast } from '../base/toastState.js'
 import { PLUGINS, enabledPluginIds, setPluginEnabled } from '../../plugins/registry.js'
 import { ApiKeyConfirm, ApiKeyField, useApiKeyEditor } from './ApiKeyField.js'
-import { AppIconSetting } from './AppIconSetting.js'
 import { BalanceSetting } from './BalanceSetting.js'
 import { ContextSetting } from './ContextSetting.js'
 import { EndpointSetting } from './EndpointSetting.js'
@@ -127,7 +126,6 @@ const SettingsContent = () => {
             <>
               <ThemeSetting />
               <SkinSetting />
-              <AppIconSetting />
               <LocaleSetting />
               <TtsVoiceSetting />
               <LocationSetting />
