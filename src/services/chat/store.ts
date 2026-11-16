@@ -38,6 +38,7 @@ import {
   toRequestMessages,
 } from './reply.js'
 import { saveTurnToMemory } from './memory.js'
+import { buildMemoryContext, withMemoryContext } from './memoryPrompt.js'
 import {
   toSessionSummary,
   type AssistantMessage,
@@ -1346,11 +1347,18 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
         if (clientSearch) {
           appendSearchContext(messages, searchContext)
         }
+        // 记忆注入：按这轮提问去记忆库捞几条相关的，接到 system 后面。
+        // 放在 messages 外面而不是拼进用户那条消息：拼进去模型会以为用户自己说的。
+        // 整段自己吞错，记忆读不到就当没有，不影响这次提问。
+        const memoryContext = await buildMemoryContext(
+          getSession(sessionId),
+          prepared.question.content
+        ).catch(() => '')
         const events = streamMessage(
           useSettings.getState().apiKey ?? '',
           {
             model: initial.model ?? chatModel(),
-            system: SYSTEM_PROMPT,
+            system: withMemoryContext(SYSTEM_PROMPT, memoryContext),
             messages,
             thinking: { type: initial.thinking ? 'enabled' : 'disabled' },
             safety_check: SAFETY_CHECK,
