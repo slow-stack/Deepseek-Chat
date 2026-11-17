@@ -1,10 +1,12 @@
+/* 顶部安全区：iPhone 刘海/灵动岛下把标题压下来，别被状态栏盖住。
+   没有安全区的环境（桌面、安卓 WebView、DSH 面板）env() 为 0，尺寸与原来一致。 */
 .header {
   display: flex;
   align-items: center;
   flex-shrink: 0;
   box-sizing: border-box;
-  height: 60px;
-  padding: 12px 10px 4px;
+  height: calc(60px + env(safe-area-inset-top));
+  padding: calc(12px + env(safe-area-inset-top)) 10px 4px;
 }
 
 .title {

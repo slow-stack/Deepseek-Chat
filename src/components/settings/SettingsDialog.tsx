@@ -22,6 +22,7 @@ import {
 import { currentVersion } from '../../services/update.js'
 import { runUpdateCheck, useUpdateBanner } from '../sider/updateBannerState.js'
 import { useIsMobile } from '../../app/viewport.js'
+import { isIos, isStandaloneWeb } from '../../app/pwa.js'
 import { isHistoryAbort, isHistoryImportAborted, useChatStore } from '../../services/chat/store.js'
 import { SaveCancelled } from '../../services/saveFile.js'
 import { regionCodes, getRegionName, provinces } from '../../services/location.js'
@@ -83,6 +84,9 @@ const sections: { value: SettingsSection; label: TranslationKey; icon: ReactNode
 const SettingsContent = () => {
   const t = useTranslate()
   const isMobile = useIsMobile()
+  // 只有 iOS 的浏览器/主屏网页才需要这句：桌面 Chrome、安卓 App、面板内嵌都不受影响，
+  // 在那些地方显示「Safari 七天清理」反而是错的。
+  const showStorageNotice = isStandaloneWeb() && isIos()
   // 打开时按调用方指定的分组选中，之后在弹窗内切换
   const [section, setSection] = useState(() => useSettingsDialog.getState().section)
   const [feedbackOpened, setFeedbackOpened] = useState(false)
@@ -143,6 +147,16 @@ const SettingsContent = () => {
               <BalanceSetting />
               <ImportHistory historyImport={historyImport} disabled={historyBusy} />
               <ExportHistory disabled={historyBusy} />
+              {/* 存储告知只对「浏览器里用」的场景有意义：安卓 App 的数据在系统沙盒里，
+                  面板内嵌在桌面宿主里，都不会遇到 Safari 的七天清理 */}
+              {showStorageNotice ? (
+                <SettingCell
+                  label={t('storageNoticeLabel')}
+                  description={t('storageNoticeDescription')}
+                  status={null}
+                  action={null}
+                />
+              ) : null}
               <SettingCell
                 label={t('deleteAllSessions')}
                 status={null}

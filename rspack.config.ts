@@ -89,6 +89,9 @@ export const createConfig = ({
       patterns: [
         { from: path.resolve(root, 'LICENSE'), to: 'LICENSE', toType: 'file' },
         { from: path.resolve(root, 'NOTICE'), to: 'NOTICE', toType: 'file' },
+        // PWA 静态件：manifest、Service Worker、主屏图标。文件名不带 contenthash，
+        // 所以 SW 的缓存策略（见 public/sw.js）里按目录区分，别改成 hash 命名。
+        { from: path.resolve(root, 'public'), to: '.', toType: 'dir' },
       ],
     }),
   ],

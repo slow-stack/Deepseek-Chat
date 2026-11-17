@@ -403,6 +403,9 @@ export const zh = {
   historyExportDescription:
     '包含所有历史对话及本地图片原件；其他附件仅保留文件信息，不包含 API Key。',
   exportAllDownload: '下载',
+  storageNoticeLabel: '对话存在哪',
+  storageNoticeDescription:
+    '所有对话只存在这台设备上，不经过服务器。用 Safari 标签页打开时，七天没互动可能被系统清掉；加到主屏幕后不受这条限制，但设备空间吃紧时仍可能被回收。要紧的对话请定期导出备份。',
   deleteAllSessions: '删除所有对话',
   deleteAllSessionsModalTitle: '删除后，所有对话都将被清空且无法找回',
   deleteAllSessionsModalDescription: '本地保存的附件及未发送的草稿也将被删除。',
