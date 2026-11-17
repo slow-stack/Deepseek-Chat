@@ -16,11 +16,15 @@
     border-color 0.18s ease,
     box-shadow 0.18s ease;
 
-  /* 聚焦环用品牌蓝，不用 label-primary：后者在暗色下接近白色，
-     6% 铺开就是一圈发白的边，夜里看很刺眼。 */
-  &:focus-within {
-    border-color: color-mix(in srgb, var(--dsw-alias-brand-primary) 42%, transparent);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--dsw-alias-brand-primary) 10%, transparent);
+  /* 聚焦环用品牌蓝，不用 label-primary：后者在暗色下接近白色，夜里看很刺眼。
+     这里写死颜色、不经过 var() 与 color-mix()：主题变量在某些 WebView 里取不到，
+     那两行会整条作废，border-color 回落到 currentColor（暗色下就是近纯白），
+     于是又变回一圈刺眼的白边。 */
+  &:focus-within,
+  &:focus-visible {
+    border-color: #6f8cff;
+    box-shadow: 0 0 0 3px rgba(111, 140, 255, 0.18);
+    outline: none;
   }
 }
 

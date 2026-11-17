@@ -24,6 +24,61 @@ const EMBED_BATCH = 16
 /** 请求超时：算向量偶尔会慢，给足 30 秒，再久就当它挂了 */
 const TIMEOUT_MS = 30000
 
+/**
+ * 瞬时失败最多重试几次。免费档的 embedding 普遍有 RPM 限制，整库重建是
+ * 背靠背的请求流，不重试的话撞一次 429 就「算到一半断了」，而且用户完全
+ * 看不到原因。退避 800ms → 2s，两轮基本能扛过限流窗口。
+ */
+const RETRY_ATTEMPTS = 3
+const RETRY_DELAYS_MS = [800, 2000]
+
+/** 批与批之间歇一下，别贴着限流上限跑 */
+const BATCH_GAP_MS = 200
+
+/** 配置类错误（密钥错、地址错、模型名错）重试多少次都一样，直接失败把原因亮出来 */
+const NON_RETRYABLE_STATUS = new Set([400, 401, 403, 404, 405, 422])
+
+/** 带状态码的接口报错：用来区分「再试一次有用」和「再试也一样」 */
+class EmbeddingHttpError extends Error {
+  constructor(
+    readonly status: number,
+    message: string
+  ) {
+    super(message)
+  }
+}
+
+const sleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms))
+
+const truncate = (text: string, max = 120): string =>
+  text.length <= max ? text : `${text.slice(0, max)}…`
+
+/** 把接口的报错响应读成一句人能看懂的话，状态码后面带上服务方给的 message */
+const describeBadResponse = async (response: Response): Promise<string> => {
+  let detail = ''
+  try {
+    const body = (await response.json()) as { message?: unknown; error?: unknown }
+    if (typeof body.message === 'string') {
+      detail = body.message
+    } else if (typeof body.error === 'string') {
+      detail = body.error
+    }
+  } catch {
+    try {
+      detail = truncate(await response.text())
+    } catch {
+      /* 响应体读不出来就只报状态码 */
+    }
+  }
+  return detail
+    ? `embedding responded ${response.status}: ${truncate(detail)}`
+    : `embedding responded ${response.status}`
+}
+
+const isRetryable = (error: unknown): boolean =>
+  error instanceof EmbeddingHttpError ? !NON_RETRYABLE_STATUS.has(error.status) : true
+
 export type VectorConfig = {
   enabled: boolean
   baseUrl: string
@@ -54,12 +109,11 @@ const embeddingsUrl = (baseUrl: string): string => {
   return /\/embeddings$/i.test(base) ? base : `${base}/embeddings`
 }
 
-/** 调一次接口算一批文本的向量；任何一步不对就抛，调用方自己决定是不是静默回落 */
-export const embedTexts = async (texts: string[], config = vectorConfig()): Promise<number[][]> => {
-  const url = embeddingsUrl(config.baseUrl)
-  if (!url) {
-    throw new Error('vector base url is empty')
-  }
+const requestEmbeddings = async (
+  texts: string[],
+  url: string,
+  config: VectorConfig
+): Promise<number[][]> => {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
   let response: Response
@@ -77,7 +131,7 @@ export const embedTexts = async (texts: string[], config = vectorConfig()): Prom
     clearTimeout(timer)
   }
   if (!response.ok) {
-    throw new Error(`embedding responded ${response.status}`)
+    throw new EmbeddingHttpError(response.status, await describeBadResponse(response))
   }
   const body = (await response.json()) as { data?: unknown }
   if (!Array.isArray(body.data)) {
@@ -96,9 +150,50 @@ export const embedTexts = async (texts: string[], config = vectorConfig()): Prom
   return vectors
 }
 
+/**
+ * 调一次接口算一批文本的向量。瞬时失败（限流、断连、5xx）按退避重试，
+ * 配置类错误立刻失败；`attempts` 传 1 可以关掉重试（查询路径要用，
+ * 不然接口挂了要干等三轮才回落到字面匹配）。
+ */
+export const embedTexts = async (
+  texts: string[],
+  config = vectorConfig(),
+  attempts = RETRY_ATTEMPTS
+): Promise<number[][]> => {
+  const url = embeddingsUrl(config.baseUrl)
+  if (!url) {
+    throw new Error('vector base url is empty')
+  }
+  let lastError: unknown
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    if (attempt > 1) {
+      await sleep(RETRY_DELAYS_MS[Math.min(attempt - 2, RETRY_DELAYS_MS.length - 1)])
+    }
+    try {
+      return await requestEmbeddings(texts, url, config)
+    } catch (error) {
+      lastError = error
+      if (!isRetryable(error)) {
+        break
+      }
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error(String(lastError))
+}
+
+/**
+ * 一条记忆算一份向量最多喂多少字。embedding 接口对单条输入有 token 上限
+ * （硅基流动 bge-m3 实测：1 万字能过，3 万字被拒成 400 / code 20015），
+ * 超长的那条会让整批失败，看起来就是「算到一半断了」，换多少家 API 都一样。
+ * 截到 4000 字在安全范围内，语义检索也够用；重建索引和查询走同一个上限。
+ */
+const MAX_EMBED_CHARS = 4000
+
 /** 把要参与语义比对的内容拼成一次输入：标题短、正文长，权重分开写 */
-const textOf = (record: MemoryRecord): string =>
-  record.title ? `${record.title}\n${record.content}` : record.content
+const textOf = (record: MemoryRecord): string => {
+  const text = record.title ? `${record.title}\n${record.content}` : record.content
+  return text.slice(0, MAX_EMBED_CHARS)
+}
 
 const cosine = (a: number[], b: number[]): number => {
   const length = Math.min(a.length, b.length)
@@ -116,12 +211,13 @@ const cosine = (a: number[], b: number[]): number => {
   return dot / (Math.sqrt(normA) * Math.sqrt(normB))
 }
 
-export type ReindexResult = { indexed: number; skipped: number; failed: number }
+export type ReindexResult = { indexed: number; skipped: number; failed: number; failure?: string }
 
 /**
  * 把还没有向量的记忆补上。已经有向量的跳过，所以反复调用是安全的，
  * 换模型时先清空再补（新旧向量不同源）。
- * 中途失败就停下，已算好的留着，下次接着来。
+ * 中途失败就停下，已算好的留着，下次接着来；失败原因记下来给 UI 亮出来，
+ * 不再让用户对着一句「检查地址与密钥」猜。
  */
 export const reindexMemories = async (
   config = vectorConfig(),
@@ -146,11 +242,15 @@ export const reindexMemories = async (
         await saveLocalVector({ id: batch[index].id, model: config.model, vector: vectors[index] })
         result.indexed += 1
       }
-    } catch {
+    } catch (error) {
       result.failed += batch.length
+      result.failure = error instanceof Error ? error.message : String(error)
       break
     }
     onProgress?.(start + batch.length, pending.length)
+    if (start + EMBED_BATCH < pending.length) {
+      await sleep(BATCH_GAP_MS)
+    }
   }
   return result
 }
@@ -160,11 +260,9 @@ export const resetVectors = async (): Promise<void> => {
   await clearLocalVectors()
 }
 
-/** 一条记忆算一份向量要多少字：太长的正文截断，反正检索靠前半段就够 */
-const MAX_EMBED_CHARS = 2000
-
 const queryVector = async (text: string, config: VectorConfig): Promise<number[]> => {
-  const [vector] = await embedTexts([text.slice(0, MAX_EMBED_CHARS)], config)
+  // 查询不重试：接口不行就尽快回落字面匹配，别让搜索干等
+  const [vector] = await embedTexts([text.slice(0, MAX_EMBED_CHARS)], config, 1)
   return vector
 }
 

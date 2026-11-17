@@ -216,7 +216,11 @@ const VectorSetting = () => {
         setProgress(t('memoryVectorReindexProgress', { done, total }))
       })
       if (result.failed > 0) {
-        showToast({ key: 'memoryVectorReindexFailed', type: 'error' })
+        showToast({
+          key: 'memoryVectorReindexFailed',
+          params: { reason: result.failure ?? t('memoryVectorReindexNoReason') },
+          type: 'error',
+        })
       } else {
         showToast({
           key: 'memoryVectorReindexDone',
