@@ -1,5 +1,8 @@
-/* 顶部安全区：iPhone 刘海/灵动岛下把标题压下来，别被状态栏盖住。
-   没有安全区的环境（桌面、安卓 WebView、DSH 面板）env() 为 0，尺寸与原来一致。 */
+/* 这两行别当成「已经处理过刘海」：状态栏选了 default（见 index.html 里那段说明），
+   顶部那条由系统占着，内容不会压到状态栏底下，所以 env(safe-area-inset-top)
+   在 iOS 主屏态下实际恒为 0，calc 是空操作。留着只是为了让仍然会给出顶部安全区
+   的环境（底部横条机型、别的 WebView 外壳）不至于把标题顶到系统栏里，
+   不额外增加高度。真正的横屏左右安全区补在 App.module.css 的 .frame 上。 */
 .header {
   display: flex;
   align-items: center;

@@ -405,7 +405,7 @@ export const zh = {
   exportAllDownload: '下载',
   storageNoticeLabel: '对话存在哪',
   storageNoticeDescription:
-    '所有对话只存在这台设备上，不经过服务器。用 Safari 标签页打开时，七天没互动可能被系统清掉；加到主屏幕后不受这条限制，但设备空间吃紧时仍可能被回收。要紧的对话请定期导出备份。',
+    '所有对话只存在这台设备上，不经过服务器。用 Safari 标签页打开时，七天没互动可能被系统清掉；加到主屏幕后不受这条限制，但设备空间吃紧时仍可能被回收。加完主屏请先联网打开一次，离线外壳是那时存下的，之后断网才能进。要紧的对话请定期导出备份。',
   deleteAllSessions: '删除所有对话',
   deleteAllSessionsModalTitle: '删除后，所有对话都将被清空且无法找回',
   deleteAllSessionsModalDescription: '本地保存的附件及未发送的草稿也将被删除。',

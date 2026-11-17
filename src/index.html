@@ -6,6 +6,34 @@
     <meta name="theme-color" content="#3964fe" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon-180.png" />
+    <!-- 从主屏启动时 iOS 不读 manifest 的 background_color，App 起来之前会先铺一层白，
+         夜里看就是一下白闪。这几张图用和开屏同一套几何、同一个深色底（#131315，与
+         manifest 一致），把这段盖住；启动图退场、开屏进场时图形位置重合，不会跳。
+         亮色主题的用户会先看到一下暗底再转亮——这比白闪好受，而 iOS 启动图的 media
+         属性里 prefers-color-scheme 不可靠，所以不做明暗两套。
+         只画图形不画名字：开屏里名字是后淡入的，先画上会在交接时闪一次。
+         只做 4 个常见尺寸的竖屏，其它机型与横屏启动退回系统默认底色。
+         由 scripts/make-splash.mjs 生成。 -->
+    <link
+      rel="apple-touch-startup-image"
+      media="screen and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+      href="./icons/splash-1290x2796.png"
+    />
+    <link
+      rel="apple-touch-startup-image"
+      media="screen and (device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+      href="./icons/splash-1179x2556.png"
+    />
+    <link
+      rel="apple-touch-startup-image"
+      media="screen and (device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+      href="./icons/splash-1170x2532.png"
+    />
+    <link
+      rel="apple-touch-startup-image"
+      media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+      href="./icons/splash-828x1792.png"
+    />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <!-- 状态栏用 default 而不是 black-translucent：black-translucent 会把网页顶到

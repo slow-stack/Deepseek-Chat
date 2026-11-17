@@ -27,6 +27,18 @@ pnpm build
 
 产物在 `dist/`。放到静态服务器上，或者直接打开 `dist/index.html`——后者需要浏览器支持 `file://` 页面的存储，并且 API 服务允许这些页面的跨域请求。
 
+## 装到 iPhone 主屏幕
+
+网页版就是一个完整的 App，不需要装包、不用越狱、不用开发者账号。iOS 上用 Safari 打开 [slow-stack.github.io/Deepseek-Chat](https://slow-stack.github.io/Deepseek-Chat/)，按分享 → 「添加到主屏幕」，之后从主屏图标进去就是全屏，没有地址栏。
+
+**加完请先联网打开一次。** 离线外壳是 Service Worker 在这一趟里存下的；没联网走过这一趟就断网启动，只会看到开屏撤掉之后的空白页。
+
+首次打开要填自己的 API Key 与接口地址（设置 → 模型）。会话存在本机 IndexedDB，不上传任何服务器；iOS 上「七天无互动被清」的限制对主屏应用不适用，但设备空间吃紧时仍可能被系统回收，要紧的对话请定期导出备份。
+
+安卓请装 APK（见 [release/README.md](release/README.md)），比网页版多原生外壳与文件关联。
+
+GitHub Pages 不支持自定义缓存头，`sw.js` 只能吃到平台默认的十分钟缓存，所以发版后老版本退场可能延后最多十分钟。这是托管平台的限制，不是代码问题；本地预览（`node deploy/serve.mjs`）对 `sw.js` 与 manifest 发 `no-cache`，没有这段延迟。
+
 ## 功能
 
 - 多个会话，自动标题、重命名、删除；可编辑提问、重新生成回复、在消息分支之间切换。

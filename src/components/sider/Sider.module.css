@@ -364,12 +364,19 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
 }
 
+/* 抽屉是绝对定位，绝对定位的偏移按 padding box 算、不吃父级的 padding，
+   所以 .frame 上那层横屏安全区内缩传不到这里，只能自己补一次。
+   补在抽屉而不是里面那个 .sider 上：抽屉宽度按内容撑开，加 padding 才会把
+   整个面板（连同它左侧的圆角与阴影）一起从刘海旁推开，而不是把内容挤扁。
+   竖屏、桌面、安卓 env() 为 0，宽度与位置与原来完全一致。 */
 .drawer {
   position: absolute;
   top: 0;
   bottom: 0;
   left: 0;
   z-index: 800;
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 .drawerMask {
