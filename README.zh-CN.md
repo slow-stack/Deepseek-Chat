@@ -92,6 +92,8 @@ API Key 与设置存在浏览器 localStorage；会话与原始附件存在 Inde
 | `pnpm lint`        | 用 oxlint 检查               |
 | `pnpm format`      | 用 oxfmt 格式化              |
 
+iOS 主屏的启动图由 `node scripts/make-splash.mjs` 生成（需要 ImageMagick），换掉鲸鱼图标时重跑它，别手改 `public/icons/splash-*.png`。
+
 [rspack.config.ts](rspack.config.ts) 默认指向 `https://api.deepseek.com`，可用 `createConfig({ apiOrigin, devServer })` 改。聊天默认走 `deepseek-flash`，通过 Anthropic 兼容的 Messages / Files API；语音走 ASR/TTS 接口。请求里带了搜索、读链接、标题与 `latest_reminder` 等扩展字段，所以配置的服务要支持对应能力。附件格式由服务端校验决定。
 
 ## 反馈
