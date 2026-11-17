@@ -62,5 +62,8 @@
     width: auto;
     max-width: none;
     border-left: none;
+    /* 铺满整屏，也就不在 .frame 的 padding 里了；横屏时自己让开两侧刘海。 */
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
   }
 }

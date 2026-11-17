@@ -1,8 +1,17 @@
+/* 横屏刘海：手机横过来时安全区跑到左右两侧（有刘海那边 44px），不加就被
+   实体遮挡、压在不可点区域。补在这一层，侧栏与整个主区（顶栏、消息列表、
+   输入框）就都跟着内缩了；若不在这里补，而分别在各自的 padding 上加，
+   相邻两处会叠成 88px。
+   两处不吃这层 padding、得自己去补：抽屉 .drawer（绝对定位）在 Sider.module.css，
+   手机上的搜索面板（fixed 铺满全屏）在 SearchPanel.module.css。
+   env() 为 0 的环境（桌面、安卓、DSH 面板、没刘海的横屏）像素与原来完全一致。 */
 .frame {
   position: absolute;
   inset: 0;
   display: flex;
   overflow: hidden;
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
   background:
     radial-gradient(
       120% 70% at 50% -20%,

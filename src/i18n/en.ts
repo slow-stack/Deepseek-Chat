@@ -425,6 +425,9 @@ export const en = {
   historyExportDescription:
     'Includes all chat history and locally stored images. Other attachments retain file details only. Your API Key is not included.',
   exportAllDownload: 'Download',
+  storageNoticeLabel: 'Where your chats live',
+  storageNoticeDescription:
+    'Every chat stays on this device and never passes through a server. In a Safari tab, seven days without interaction can let the system clear them; added to the Home Screen that limit does not apply, but the system can still reclaim space under pressure. Open it once with a connection after adding it to the Home Screen: the offline shell is saved then, and only after that does it start without a network. Export a backup of anything you would hate to lose.',
   deleteAllSessions: 'Delete all chats',
   deleteAllSessionsModalTitle: 'Once deleted, all chats will be cleared and cannot be recovered.',
   deleteAllSessionsModalDescription:

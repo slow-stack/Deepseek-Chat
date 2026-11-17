@@ -27,6 +27,18 @@ pnpm build
 
 The output lands in `dist/`. Serve it from a static host, or open `dist/index.html` directly — that needs browser support for storage on `file://` pages and an API service that allows their cross-origin requests.
 
+## Install on an iPhone Home Screen
+
+The web build is the whole app: no package to install, no jailbreak, no developer account. On iOS, open [slow-stack.github.io/Deepseek-Chat](https://slow-stack.github.io/Deepseek-Chat/) in Safari and use Share → Add to Home Screen. Launched from the icon it runs full screen, without the address bar.
+
+**Open it once with a connection after adding it.** The offline shell is saved by the Service Worker during that visit; start it offline before that and you get the splash, then a blank page.
+
+On first launch, enter your own API key and endpoint (Settings → Model). Conversations live in this device's IndexedDB and are never uploaded; the iOS "cleared after seven days without interaction" rule does not apply to a Home Screen app, but the system can still reclaim space under pressure, so export a backup of anything you would hate to lose.
+
+On Android, install the APK instead ([release/README.md](release/README.md)): it adds a native shell and file associations.
+
+GitHub Pages does not allow custom cache headers, so `sw.js` gets the platform default of ten minutes and an old version can linger that long after a release. That is a hosting limitation, not a bug; the local preview (`node deploy/serve.mjs`) sends `no-cache` for `sw.js` and the manifest, so it has no such delay.
+
 ## Features
 
 - Conversations with automatic titles, renaming, deletion, prompt editing, regeneration, and switchable message branches.

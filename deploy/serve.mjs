@@ -14,6 +14,7 @@ const MIME = {
   ".mjs": "text/javascript; charset=utf-8",
   ".css": "text/css; charset=utf-8",
   ".json": "application/json; charset=utf-8",
+  ".webmanifest": "application/manifest+json; charset=utf-8",
   ".svg": "image/svg+xml",
   ".png": "image/png",
   ".jpg": "image/jpeg",
@@ -57,9 +58,12 @@ const server = createServer(async (req, res) => {
   if (!file) file = join(ROOT, "index.html");
   try {
     const body = await readFile(file);
+    // sw.js 必须每次问一次：它自己改名/改内容才是新版退场的触发点，
+    // 让它吃 1 小时缓存等于把更新推迟一小时。manifest 同理，改图标后要立刻生效。
+    const noCache = /(?:^|[\\/])(index\.html|sw\.js|manifest\.webmanifest)$/.test(file);
     res.writeHead(200, {
       "content-type": MIME[extname(file).toLowerCase()] || "application/octet-stream",
-      "cache-control": file.endsWith("index.html") ? "no-cache" : "public, max-age=3600",
+      "cache-control": noCache ? "no-cache" : "public, max-age=3600",
       "content-length": body.length,
     });
     if (req.method === "HEAD") res.end();
