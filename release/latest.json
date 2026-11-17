@@ -1,14 +1,13 @@
 {
-  "versionName": "0.2.4",
-  "downloadUrl": "https://github.com/slow-stack/Deepseek-Chat/releases/download/v0.2.4/DeepseekChat-0.2.4-debug.apk",
+  "versionName": "0.2.5",
+  "downloadUrl": "https://github.com/slow-stack/Deepseek-Chat/releases/download/v0.2.5/DeepseekChat-0.2.5-debug.apk",
   "highlights": [
-    "这一版换了包名，装上是一个全新的 App：先在旧版里导出会话，再装新版导入（步骤见 Release 说明）",
-    "导出历史对话有了进度条：导到第几个、在打包还是写盘都看得见，中途能取消",
-    "App 里导出走系统保存框，ZIP 直接存到你挑的位置，不再点了没反应",
-    "修好 0.2.3 打开记忆页读不到数据的问题",
-    "桌面图标换成那只鲸鱼，一套到底；更新下载取消有明确结局"
+    "输入框聚焦不再有刺眼白框，改用品牌蓝",
+    "记忆的向量索引能跑完了：超长记忆不再拖垮整批",
+    "索引失败时会显示接口给的原因，不用再换着 API 猜",
+    "限流、断连自动重试，不再一次失败就整批作废"
   ],
-  "notes": "这一版换了包名，是一个全新的 App：先在旧版里导出会话，装新版后把 ZIP 导入，确认搬完了再卸载旧版。导出带进度、记忆页修复、图标换成鲸鱼。",
-  "sha256": "caf3ec373b164a0a8096e93e8c8499d27934b8fefa3a2c3b75f3d63a507e272c",
-  "size": 6455605
+  "notes": "修两个碍事的问题：输入框聚焦的白框换成品牌蓝；重建记忆向量索引不再被超长记忆中断，失败会直接给出原因。直接盖装 0.2.4 即可，会话保留。",
+  "sha256": "3b27f77f0735a15b61c7beb474c095dc50ac3e4992878cb27ee21287feb7bd0a",
+  "size": 6417985
 }
