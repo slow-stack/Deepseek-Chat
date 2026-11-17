@@ -95,6 +95,14 @@ export const TokenLedgerCard = () => {
     }
   }, [])
 
+  // 挂载就读一次：入口卡上的数字是「一共花了多少」，不是弹窗的附属品。
+  // 只在 open 时才读的话，卡片永远停在初始值 0，一直显示「还没有可计费的整理动作」，
+  // 点开弹窗才发现其实有账——这是 0.2.5 之前一直在的 bug。
+  useEffect(() => {
+    void reload()
+  }, [reload])
+
+  // 打开弹窗时再读一次，保证看到的是最新的流水
   useEffect(() => {
     if (open) {
       void reload()

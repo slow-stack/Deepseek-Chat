@@ -3,6 +3,7 @@ import { modelFor } from '../api/endpoints.js'
 import type { ChatModel, MessageParam } from '../api/types.js'
 import { useSettings } from '../settings.js'
 import { saveLocalMemory } from './memoryStore.js'
+import { recordTokenUsage } from './tokenLedger.js'
 import type { MemoryRecord } from './memoryTypes.js'
 
 /**
@@ -65,6 +66,7 @@ const runProfile = async (
   prompt: string,
   records: MemoryRecord[],
   signal: AbortSignal,
+  kind: 'profile' | 'summary',
   onDelta?: (delta: string) => void
 ): Promise<string> => {
   const { apiKey } = useSettings.getState()
@@ -94,6 +96,11 @@ const runProfile = async (
       text += event.delta.text
       onDelta?.(event.delta.text)
     }
+    // 画像与摘要也是真花了钱的整理动作，同样要落账；
+    // 之前只记了整理会话与上下文压缩，这两行永远是 0。
+    if (event.type === 'message_delta' && event.usage) {
+      void recordTokenUsage(kind, event.usage)
+    }
   }
   return text.trim()
 }
@@ -108,7 +115,7 @@ export const generateProfile = async (
   onDelta?: (delta: string) => void
 ): Promise<string> => {
   const { locale } = useSettings.getState()
-  const text = await runProfile(profilePrompt(locale), records, signal, onDelta)
+  const text = await runProfile(profilePrompt(locale), records, signal, 'profile', onDelta)
   if (!text) {
     throw new Error('empty profile')
   }
@@ -131,7 +138,7 @@ export const generateSummary = async (
   onDelta?: (delta: string) => void
 ): Promise<string> => {
   const { locale } = useSettings.getState()
-  const text = await runProfile(summaryPrompt(locale), records, signal, onDelta)
+  const text = await runProfile(summaryPrompt(locale), records, signal, 'summary', onDelta)
   if (!text) {
     throw new Error('empty summary')
   }

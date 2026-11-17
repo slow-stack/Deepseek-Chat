@@ -18,7 +18,13 @@ const STORE = 'memories'
 const VECTOR_STORE = 'vectors'
 /** token 台账同库；版本号由这一处统一管，别的模块不许自己 openDB（见下方 getMemoryDB 注释） */
 const USAGE_STORE = 'usage'
-const DB_VERSION = 3
+/**
+ * 版本号只在这里加。
+ * v4：只是强制再走一次 upgrade，让「version 已经是 3 但缺表」的坏库被补建
+ * （0.2.3 里两个模块抢版本号，能把库升到 v3 却没建成 usage 表，
+ * 旧守卫 `oldVersion < 3` 在那种库上永远不成立，usage 表就再也不会被建出来）。
+ */
+const DB_VERSION = 4
 
 /** 存进库里的形态：与界面用的 MemoryRecord 一致，另存一个毫秒数便于按时间排序 */
 type StoredMemory = MemoryRecord & { at: number }
@@ -46,18 +52,22 @@ let dbPromise: Promise<IDBPDatabase<MemoryDB>> | null = null
  */
 export const getMemoryDB = (): Promise<IDBPDatabase<MemoryDB>> =>
   (dbPromise ??= openDB<MemoryDB>(DB_NAME, DB_VERSION, {
-    upgrade(db, oldVersion) {
+    upgrade(db) {
+      // 三张表一律按「缺就建」判断，不看 oldVersion。
+      // 版本号只说明「升级跑到哪一步」，不保证那一步真的建成过表：
+      // 旧版本里两个模块抢同一个库，能把 version 顶到 3 而 usage 表从未创建，
+      // 这时 oldVersion === 3，所有 `oldVersion < N` 的守卫都失效，缺的表再也补不回来。
       if (!db.objectStoreNames.contains(STORE)) {
         const store = db.createObjectStore(STORE, { keyPath: 'id' })
         store.createIndex('at', 'at')
       }
       // 版本 2 才有向量表；老库升级时补上，已有记忆原封不动
-      if (oldVersion < 2 && !db.objectStoreNames.contains(VECTOR_STORE)) {
+      if (!db.objectStoreNames.contains(VECTOR_STORE)) {
         const store = db.createObjectStore(VECTOR_STORE, { keyPath: 'id' })
         store.createIndex('model', 'model')
       }
-      // 版本 3 才有 token 台账表；从 v1/v2 上来只补 usage，memories / vectors 不动
-      if (oldVersion < 3 && !db.objectStoreNames.contains(USAGE_STORE)) {
+      // 版本 3 才有 token 台账表；缺就建，memories / vectors 不动
+      if (!db.objectStoreNames.contains(USAGE_STORE)) {
         const store = db.createObjectStore(USAGE_STORE, { keyPath: 'id' })
         store.createIndex('at', 'at')
       }
