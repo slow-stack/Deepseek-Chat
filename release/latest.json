@@ -1,13 +1,12 @@
 {
-  "versionName": "0.2.5",
-  "downloadUrl": "https://github.com/slow-stack/Deepseek-Chat/releases/download/v0.2.5/DeepseekChat-0.2.5-debug.apk",
+  "versionName": "0.2.6",
+  "downloadUrl": "https://github.com/slow-stack/Deepseek-Chat/releases/download/v0.2.6/DeepseekChat-0.2.6-debug.apk",
   "highlights": [
-    "输入框聚焦不再有刺眼白框，改用品牌蓝",
-    "记忆的向量索引能跑完了：超长记忆不再拖垮整批",
-    "索引失败时会显示接口给的原因，不用再换着 API 猜",
-    "限流、断连自动重试，不再一次失败就整批作废"
+    "记忆页的 Token 消耗卡不再总是说「还没有可计费的整理动作」，进页面就显示真实数字",
+    "从 0.2.3 升上来的旧库会自动补建缺失的台账表，不用清数据重装",
+    "用户画像与记忆摘要的用量也记账了，那两行不再是 0"
   ],
-  "notes": "修两个碍事的问题：输入框聚焦的白框换成品牌蓝；重建记忆向量索引不再被超长记忆中断，失败会直接给出原因。直接盖装 0.2.4 即可，会话保留。",
-  "sha256": "3b27f77f0735a15b61c7beb474c095dc50ac3e4992878cb27ee21287feb7bd0a",
-  "size": 6417985
+  "notes": "只修 token 台账：入口卡挂载即读、旧库缺表自动补建、画像与摘要落账。直接盖装 0.2.5 即可，会话与记忆都保留。",
+  "sha256": "c387558490fe7e3f045623539f85be83c9488fa46890fa3f220c4ab4e0da6df2",
+  "size": 6795454
 }
