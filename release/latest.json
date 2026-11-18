@@ -1,12 +1,12 @@
 {
-  "versionName": "0.2.6",
-  "downloadUrl": "https://github.com/slow-stack/Deepseek-Chat/releases/download/v0.2.6/DeepseekChat-0.2.6-debug.apk",
+  "versionName": "0.2.7",
+  "downloadUrl": "https://github.com/slow-stack/Deepseek-Chat/releases/download/v0.2.7/DeepseekChat-0.2.7-debug.apk",
   "highlights": [
-    "记忆页的 Token 消耗卡不再总是说「还没有可计费的整理动作」，进页面就显示真实数字",
-    "从 0.2.3 升上来的旧库会自动补建缺失的台账表，不用清数据重装",
-    "用户画像与记忆摘要的用量也记账了，那两行不再是 0"
+    "老会话里那张坏图不再拖死整轮对话：发送前按文件头确认图片真能发，认不出的只留在界面、不随请求发出",
+    "服务端仍然拒收时，自动摘掉被点名的那一张再重发，不再每次重发都卡在同一张图上",
+    "导入的历史会话里没带格式的图片会按文件头补成真实格式，不用重新导入"
   ],
-  "notes": "只修 token 台账：入口卡挂载即读、旧库缺表自动补建、画像与摘要落账。直接盖装 0.2.5 即可，会话与记忆都保留。",
-  "sha256": "c387558490fe7e3f045623539f85be83c9488fa46890fa3f220c4ab4e0da6df2",
-  "size": 6795454
+  "notes": "只动附件发送这一层：损坏或格式不受支持的图片不再进入请求上下文，界面上仍能看到原图。直接盖装 0.2.6 即可，会话与记忆都保留。",
+  "sha256": "66b9cf77413243a2ad404c0bdabbfe565c6bec0f95eab4079e889a9a8c3b96cb",
+  "size": 6797034
 }
