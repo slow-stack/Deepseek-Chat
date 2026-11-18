@@ -3,6 +3,7 @@ import type { LinkedMessage, TranslationMessage } from '../i18n/index.js'
 import { uploadFile } from './api/client.js'
 import { classifyApiError, getUploadErrorInfo, isRetryableApiError } from './api/errors.js'
 import type { FilePurpose } from './api/types.js'
+import { sniffBlobMimeType } from './fileType.js'
 import { ACCEPT_FILE_EXTS } from './uploadExts.js'
 
 /** 允许上传的扩展名，按扩展名白名单过滤，清单见 uploadExts.ts */
@@ -131,7 +132,7 @@ const enqueueUpload = (
         return
       }
       try {
-        const body = file instanceof File ? file : new File([file], name, { type: file.type })
+        const body = await toUploadBody(file, name)
         resolve((await uploadFile(apiKey, body, getUploadPurpose(name, isImage), signal)).id)
       } catch (error) {
         reject(error)
@@ -139,6 +140,18 @@ const enqueueUpload = (
     })
     next()
   })
+
+/**
+ * 上传用的 File：type 为空时先按扩展名补，仍补不出再读文件头。
+ * 没有这一步，导入的历史图片会以 application/octet-stream 发出去，
+ * 服务端拿得到 file_id 却解不出图，整轮对话在 messages 接口报「不受支持的图片」。
+ */
+const toUploadBody = async (file: Blob, name: string): Promise<File> => {
+  const type = file.type || MIME_BY_EXT[getFileExt(name)] || (await sniffBlobMimeType(file))
+  return file instanceof File && file.type === type
+    ? file
+    : new File([file], name, type ? { type } : {})
+}
 
 /**
  * 上传任务按附件的本地 id 登记：输入框选中即开始上传，全部成功后携带 serverId 发送，
@@ -215,8 +228,21 @@ const MIME_BY_EXT: Record<string, string> = {
   png: 'image/png',
   jpg: 'image/jpeg',
   jpeg: 'image/jpeg',
+  jfif: 'image/jpeg',
+  pjpeg: 'image/jpeg',
+  pjp: 'image/jpeg',
   gif: 'image/gif',
   webp: 'image/webp',
+  bmp: 'image/bmp',
+  dib: 'image/bmp',
+  tif: 'image/tiff',
+  tiff: 'image/tiff',
+  avif: 'image/avif',
+  apng: 'image/apng',
+  ico: 'image/x-icon',
+  svg: 'image/svg+xml',
+  svgz: 'image/svg+xml',
+  xbm: 'image/x-xbitmap',
 }
 
 /** 取文件的 MIME：优先用浏览器给出的类型，缺失时按扩展名推断 */

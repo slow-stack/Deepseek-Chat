@@ -250,6 +250,7 @@ export const en = {
   messageSearchSummary: '1 web page',
   messageSearchSummaries: '{count} web pages',
   messageMemoryNote: '{count} memories used',
+  messageExcludedFiles: '{count} attachment(s) could not be parsed and were not sent',
   messageVersions: 'Message versions',
   previousVersion: 'Previous version',
   nextVersion: 'Next version',

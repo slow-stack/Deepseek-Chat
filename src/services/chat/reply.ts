@@ -24,10 +24,11 @@ const COMPACTION_ACK = '好的，我已了解之前的对话内容。'
 /**
  * 文件按 Files API 的 file_id（附件的 serverId）引用：图片用 image 块，其余用 document 块。
  * 发送前 streamReply 会先补齐 serverId；仍为 null 的是本地没有原件的附件，不进入请求。
+ * excluded 的是服务端拒收过的附件，只在界面上展示，不再发给服务端。
  */
 const toFileBlocks = (files: FileAttachment[]): FileBlockParam[] =>
-  files.flatMap(({ serverId, isImage }) =>
-    serverId
+  files.flatMap(({ serverId, isImage, excluded }) =>
+    serverId && !excluded
       ? [
           {
             type: isImage ? 'image' : 'document',
