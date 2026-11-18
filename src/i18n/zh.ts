@@ -235,6 +235,7 @@ export const zh = {
   messageSearchSummary: '1 个网页',
   messageSearchSummaries: '{count} 个网页',
   messageMemoryNote: '带了 {count} 条记忆',
+  messageExcludedFiles: '{count} 个附件无法解析，未随本轮发送',
   messageVersions: '消息版本',
   previousVersion: '上一个版本',
   nextVersion: '下一个版本',

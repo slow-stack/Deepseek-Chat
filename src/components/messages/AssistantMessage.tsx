@@ -142,6 +142,11 @@ export const AssistantMessage = memo(function AssistantMessage({
         <div className={styles.bottom}>
           <BranchSwitcher versions={versions} disabled={busy} onSelect={onSelectVersion} />
           <div className={clsx(styles.actions, isLast && styles.alwaysShow)}>
+            {message.excludedFiles ? (
+              <span className={styles.memoryNote}>
+                {t('messageExcludedFiles', { count: message.excludedFiles })}
+              </span>
+            ) : null}
             {message.memoryNote ? (
               <span className={styles.memoryNote}>
                 {t('messageMemoryNote', { count: message.memoryNote })}

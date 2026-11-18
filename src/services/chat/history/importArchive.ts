@@ -1,4 +1,5 @@
 import * as db from '../db.js'
+import { sniffMimeType } from '../../fileType.js'
 import { BackupError, fail } from './errors.js'
 import type { SessionIndexEntry } from './format.js'
 import { INDEX_PATH, MANIFEST_PATH, USER_PATH, parseSessionPath, sessionFilesDir } from './paths.js'
@@ -13,33 +14,11 @@ import {
   type ArchiveEntry,
 } from './zipReader.js'
 
-/** 从原件字节补充图片 MIME；无法识别时为空字符串，图片身份仍由归档的 is_image 决定。 */
-const imageType = (bytes: Uint8Array): string => {
-  const startsWith = (...prefix: number[]) => prefix.every((byte, index) => bytes[index] === byte)
-  const header = new TextDecoder('ascii').decode(bytes.subarray(0, 12))
-  if (startsWith(0xff, 0xd8, 0xff)) {
-    return 'image/jpeg'
-  }
-  if (startsWith(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a)) {
-    return 'image/png'
-  }
-  if (header.startsWith('GIF87a') || header.startsWith('GIF89a')) {
-    return 'image/gif'
-  }
-  if (header.startsWith('RIFF') && header.slice(8, 12) === 'WEBP') {
-    return 'image/webp'
-  }
-  if (startsWith(0x42, 0x4d)) {
-    return 'image/bmp'
-  }
-  if (startsWith(0x49, 0x49, 0x2a, 0) || startsWith(0x4d, 0x4d, 0, 0x2a)) {
-    return 'image/tiff'
-  }
-  if (header.slice(4, 8) === 'ftyp' && ['avif', 'avis'].includes(header.slice(8, 12))) {
-    return 'image/avif'
-  }
-  return ''
-}
+/**
+ * 导入时读原件头部用于识别真实类型：比 16 字节多留一些，SVG 的声明可能在前几百字节。
+ * 识别在 sniffMimeType 里，与上传前的兜底共用同一套判断，避免两处口径不一致。
+ */
+const HEADER_BYTES = 512
 
 const readJson = async (entry: ArchiveEntry): Promise<unknown> => {
   const text = await (await readEntry(entry)).text()
@@ -100,7 +79,7 @@ export const importArchive = async (
       return
     }
     const data = await readEntry(entry)
-    const type = imageType(new Uint8Array(await data.slice(0, 16).arrayBuffer()))
+    const type = sniffMimeType(new Uint8Array(await data.slice(0, HEADER_BYTES).arrayBuffer()))
     await db.saveStagingFiles([{ id, blob: new Blob([data], { type }) }])
     stored.set(id, type)
   }

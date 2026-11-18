@@ -80,6 +80,32 @@ export const extractFileIds = (message: string): string[] => [
   ...new Set(message.match(/file-api-[\w-]+/g) ?? []),
 ]
 
+/**
+ * 服务端拒收请求里的某个附件：file_id 有效、内容却解析不出图片。
+ * 文案会点名 messages.N.content.M，N 是请求 messages 的下标，M 是那条消息里内容块的下标。
+ */
+const REJECTED_FILE_PATTERNS = [
+  /messages\.\d+\.content\.\d+:.*(?:unsupported|invalid) (?:file|image)/i,
+  /messages\.\d+\.content\.\d+:.*(?:不受支持|无法识别)/,
+]
+
+/** 报错点名到的内容块位置；取不到时为 null */
+export const getRejectedBlockIndex = (message: string): { message: number; block: number } | null => {
+  const found = /messages\.(\d+)\.content\.(\d+)/.exec(message)
+  return found ? { message: Number(found[1]), block: Number(found[2]) } : null
+}
+
+/**
+ * 只识别「请求里某个附件的内容被拒」这一类 400：图片损坏、格式不受支持、文件解析失败。
+ * 与 file_id 失效不同，重新上传同一个原件没有用，只能把这个附件从请求里摘掉。
+ */
+export const isRejectedFileError = (error: unknown): boolean => {
+  if (!(error instanceof ApiError) || error.status !== 400) {
+    return false
+  }
+  return REJECTED_FILE_PATTERNS.some((pattern) => pattern.test(error.message))
+}
+
 /** 上传失败里能识别出具体原因的情况；其余统一按「上传失败」处理 */
 export type UploadErrorCode = 'fileCountLimit' | 'storageLimit' | 'parseFailed'
 

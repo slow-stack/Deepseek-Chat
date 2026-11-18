@@ -10,7 +10,13 @@ import type {
   ServerToolUseBlock,
   WebSearchToolResultBlock,
 } from '../api/types.js'
-import { extractFileIds, getFileErrorCode, isRetryableApiError } from '../api/errors.js'
+import {
+  extractFileIds,
+  getFileErrorCode,
+  getRejectedBlockIndex,
+  isRejectedFileError,
+  isRetryableApiError,
+} from '../api/errors.js'
 import { cancelUpload, describeUploadError, uploadAttachment, useUploads } from '../attachments.js'
 import { useSettings } from '../settings.js'
 import { appendBranch, getVisibleMessages, normalizeSession, selectVersion } from './branches.js'
@@ -38,6 +44,7 @@ import {
   toRequestMessages,
 } from './reply.js'
 import { saveTurnToMemory } from './memory.js'
+import { getRejectedFileId, resolveFileBlockKind, selectRejectedFiles } from './fileBlockKind.js'
 import { buildMemoryContext, withMemoryContext } from './memoryPrompt.js'
 import {
   toSessionSummary,
@@ -1092,6 +1099,82 @@ const refreshRequest = (sessionId: string, request: Request): Request => {
 }
 
 /**
+ * 本次请求范围内已被摘出上下文的附件数，用于在回复底部说明「这轮少带了几个附件」。
+ * 只看这次真正发出去的轮次：request 是发送前的快照，excluded 标记要从会话最新状态读。
+ */
+const countExcludedFiles = (sessionId: string, request: Request): number => {
+  const session = getSession(sessionId)
+  if (!session) {
+    return 0
+  }
+  const ids = new Set<string>([request.question.id])
+  for (const [user] of getContextRounds(request.history)) {
+    ids.add(user.id)
+  }
+  let count = 0
+  for (const message of session.messages) {
+    if (message.role === 'user' && ids.has(message.id)) {
+      count += message.files.filter((file) => file.excluded).length
+    }
+  }
+  return count
+}
+
+/**
+ * 发送前按字节确认图片附件的真实类型，改掉「归档说是图片就当图片发」的老做法：
+ * - 嗅探出服务端认的图片格式 → 把 MIME 写回附件，下次发送不必再读原件；
+ * - 嗅探出来不是（损坏、加密、服务端不认的格式）→ 标成 excluded，只展示不发送，
+ *   否则服务端会拿它报「不受支持的图片」，把整轮对话连坐。
+ * 只处理图片附件，文档附件没有这个问题，也不额外读盘。
+ */
+const verifyFileKinds = async (sessionId: string, request: Request, signal: AbortSignal) => {
+  const candidates = new Map<string, FileAttachment>()
+  const collect = (files: FileAttachment[]) => {
+    for (const file of files) {
+      if (file.isImage && !file.excluded && !candidates.has(file.id)) {
+        candidates.set(file.id, file)
+      }
+    }
+  }
+  collect(request.question.files)
+  for (const [user] of getContextRounds(request.history)) {
+    collect(user.files)
+  }
+  if (candidates.size === 0) {
+    return
+  }
+  const patches = new Map<string, Partial<FileAttachment>>()
+  for (const file of candidates.values()) {
+    signal.throwIfAborted()
+    const verdict = await resolveFileBlockKind(file, db.loadFile)
+    if (verdict.kind === 'drop' && verdict.reason === 'broken') {
+      patches.set(file.id, { excluded: true })
+    } else if (verdict.kind === 'image' && verdict.source === 'bytes' && verdict.sniffed) {
+      patches.set(file.id, { mimeType: verdict.sniffed })
+    }
+  }
+  if (patches.size === 0) {
+    return
+  }
+  updateSession(sessionId, (session) => ({
+    ...session,
+    messages: session.messages.map((message) => {
+      if (message.role !== 'user' || !message.files.some((file) => patches.has(file.id))) {
+        return message
+      }
+      return {
+        ...message,
+        files: message.files.map((file) => {
+          const patch = patches.get(file.id)
+          return patch ? { ...file, ...patch } : file
+        }),
+      }
+    }),
+  }))
+  persist(sessionId)
+}
+
+/**
  * 发送前补齐附件的 serverId。
  * - 本轮提问的附件并行补齐，任一失败则整体失败，已成功的照常写回，重试时复用成功结果；
  * - 历史轮次（仅进入上下文的）中没有 serverId 的附件，多为导入的图片：从最新的消息往前逐张补传，
@@ -1101,6 +1184,9 @@ const prepareFiles = async (sessionId: string, request: Request, signal: AbortSi
   const epoch = historyEpoch
   // 服务端判定 file_id 失效时会清掉会话里的 serverId，先用最新消息替换请求快照，
   // 否则快照里仍是旧 id，补传会直接复用它。
+  request = refreshRequest(sessionId, request)
+  // 先按字节确认哪些图片真能发：坏图在补传之前就摘掉，别白传一遍再被服务端拒
+  await verifyFileKinds(sessionId, request, signal)
   request = refreshRequest(sessionId, request)
   const apiKey = useSettings.getState().apiKey ?? ''
   const serverIds = new Map<string, string>()
@@ -1217,6 +1303,54 @@ const reuploadInvalidatedFiles = (sessionId: string, request: Request, error: un
   updateSession(sessionId, (current) => ({ ...current, messages }))
   // 上传任务里可能还留着同一个失效的 serverId，清掉后 ensureServerId 才会重新上传
   localIds.forEach(cancelUpload)
+  persist(sessionId)
+  return true
+}
+
+/**
+ * 服务端拒收请求里的附件内容（图片损坏、格式不受支持）时，把被点名的附件标成 excluded 并重发。
+ * 与 file_id 失效不同，重传同一个原件没有用，只能把它从上下文里摘掉；重发前先把请求快照换成
+ * 最新会话，否则快照里还带着那块坏图。
+ * 报错点名了具体内容块就只摘那一张（sent 是这次真正发出去的 messages），
+ * 点名不到才退回按 MIME 猜。返回 true 表示已摘掉、可以重试。
+ */
+const excludeRejectedFiles = (
+  sessionId: string,
+  error: unknown,
+  sent?: readonly MessageParam[]
+): boolean => {
+  if (!isRejectedFileError(error)) {
+    return false
+  }
+  const session = getSession(sessionId)
+  if (!session) {
+    return false
+  }
+  const rejectedFileId =
+    error instanceof ApiError && sent
+      ? getRejectedFileId(sent, getRejectedBlockIndex(error.message))
+      : null
+  let changed = false
+  const messages = session.messages.map((message) => {
+    if (message.role !== 'user' || message.files.length === 0) {
+      return message
+    }
+    const targets = new Set(selectRejectedFiles(message.files, rejectedFileId))
+    if (targets.size === 0) {
+      return message
+    }
+    changed = true
+    return {
+      ...message,
+      files: message.files.map((file) =>
+        targets.has(file.id) ? { ...file, excluded: true } : file
+      ),
+    }
+  })
+  if (!changed) {
+    return false
+  }
+  updateSession(sessionId, (current) => ({ ...current, messages }))
   persist(sessionId)
   return true
 }
@@ -1388,6 +1522,8 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
       /** 附件补齐前出错属于上传失败，请求还没有发出 */
       let preparing = true
       let receivedContent = false
+      /** 这一轮真正发出去的请求体，服务端点名拒收时用来反查是哪张图 */
+      let sent: MessageParam[] | undefined
       try {
         const prepared = await prepareFiles(sessionId, request, controller.signal)
         preparing = false
@@ -1408,6 +1544,7 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
           latestReminder,
           compaction
         )
+        sent = messages
         // 联网搜索：配了自己的接口就由客户端先搜，结果作为一对工具块回填给界面，
         // 同时把正文拼进本轮提问；没配才声明服务端工具，交给服务端在对话里执行。
         // 两条路互斥，否则同一轮会搜两遍、钱花两遍。
@@ -1501,6 +1638,20 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
           !receivedContent &&
           reuploadInvalidatedFiles(sessionId, request, error)
         ) {
+          await waitForRetry(attempt, controller.signal)
+          if (controller.signal.aborted) {
+            reply = settleReply(reply, 'stopped', Date.now())
+            break
+          }
+          continue
+        }
+        // 附件内容被拒：重传同一个原件没有用，摘掉这张图再发一次，并在回复上留一句说明。
+        if (
+          attempt < FILE_RETRY_LIMIT &&
+          !receivedContent &&
+          excludeRejectedFiles(sessionId, error, sent)
+        ) {
+          reply = { ...reply, excludedFiles: countExcludedFiles(sessionId, request) }
           await waitForRetry(attempt, controller.signal)
           if (controller.signal.aborted) {
             reply = settleReply(reply, 'stopped', Date.now())

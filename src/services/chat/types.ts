@@ -23,6 +23,11 @@ export type FileAttachment = {
   isImage: boolean
   /** 具体 MIME；导入时没有原件或无法识别的为空字符串，不影响图片身份。 */
   mimeType: string
+  /**
+   * 服务端拒收过这张图（内容解析不出图片）时置为 true，此后不再进入请求上下文。
+   * 只影响发送，本地原件与界面展示都不动。
+   */
+  excluded?: boolean
 }
 
 /** 本地消息的分支关系；字段缺省时按线性消息列表处理。 */
@@ -83,6 +88,8 @@ export type AssistantMessage = MessageBranch & {
   search?: boolean
   /** 本轮注入了几条记忆；没带记忆时缺省 */
   memoryNote?: number
+  /** 本轮有附件因为服务端解析不了被摘出上下文；没有时缺省 */
+  excludedFiles?: number
   /** 本轮请求的系统信息快照；各回答版本独立保存，续写沿用。历史消息中缺省的快照保持为空。 */
   latestReminder?: string
   /** 是否允许作为续写前缀；仍需满足回复状态与内容限制。 */
