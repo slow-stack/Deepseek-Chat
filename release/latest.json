@@ -1,12 +1,13 @@
 {
-  "versionName": "0.2.10",
-  "downloadUrl": "https://github.com/slow-stack/Deepseek-Chat/releases/download/v0.2.10/DeepseekChat-0.2.10-debug.apk",
+  "versionName": "0.2.11",
+  "downloadUrl": "https://github.com/slow-stack/Deepseek-Chat/releases/download/v0.2.11/DeepseekChat-0.2.11-debug.apk",
   "highlights": [
-    "设置里能调字号了，五档从「小」到「超大」，只放大正文和消息里的字，按钮图标不动",
-    "重新生成这次真的换了个写法：之前只改了提示词，模型在默认温度下还是会写出差不多的段落，现在每次都换采样温度",
-    "字号偏好会记住，下次打开还是你选的那档"
+    "字号改成直接填 px：10 到 22，默认 14，右边上下箭头逐格加减，到边界置灰",
+    "设置页自己也跟着变了——上一版只放了正文和消息，你在设置页点字号眼前一动不动，看着就像没做",
+    "输入框行高跟着字号走：之前写死 24px，放大到 22px 时字贴着上下边框，两行输入框也装不下",
+    "老版本选过的字号会迁移过来，升级后不再被重置回 14px"
   ],
-  "notes": "直接盖装 0.2.9 即可，会话、记忆与设置都保留。",
-  "sha256": "ad9a68d1a5d700f9d7f444eaf94a5fbc6897b7b675cf4644a5760472e410d72c",
-  "size": 6798888
+  "notes": "直接盖装 0.2.10 即可，会话、记忆与设置都保留。",
+  "sha256": "62659efc781c57da50992d169204120b1f390b4cffd9c0c9b379448e659f7c8d",
+  "size": 7037505
 }
