@@ -19,3 +19,6 @@ tmp/
 .pr-*.json
 .merge.json
 .release-notes.md
+
+# 本地探针脚本，不进仓库
+tmp-probe/

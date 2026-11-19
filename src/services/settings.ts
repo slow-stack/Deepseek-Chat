@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { API_CAPABILITIES, type ApiCapability } from './api/capability.js'
 import type { TtsVoice } from './api/speech.js'
+import { isFontScale } from '../app/fontScale.js'
 import { normalizeLocation, type UserLocation } from './location.js'
 
 export type Locale = 'zh-CN' | 'en-US'
@@ -35,6 +36,8 @@ type Settings = {
   locale: Locale
   themePreference: ThemePreference
   skin: Skin
+  /** 正文字号倍数，1 为标准；只放大文字，不动控件尺寸 */
+  fontScale: number
   location: UserLocation | null
   ttsVoice: TtsVoice
   thinking: boolean
@@ -75,6 +78,7 @@ const KEYS = {
   location: 'chat-demo:location',
   themePreference: 'chat-demo:theme-preference',
   skin: 'chat-demo:skin',
+  fontScale: 'chat-demo:font-scale',
   ttsVoice: 'chat-demo:tts-voice',
   thinking: 'chat-demo:thinking',
   search: 'chat-demo:search',
@@ -200,12 +204,19 @@ const readNumber = (key: string, fallback: number, min: number, max: number): nu
   return Number.isFinite(value) && value >= min && value <= max ? value : fallback
 }
 
+/** 字号只接受预设档位，篡改过的值退回标准 */
+const initialFontScale = (): number => {
+  const value = Number(read(KEYS.fontScale))
+  return isFontScale(value) ? value : 1
+}
+
 export const useSettings = create<Settings>(() => ({
   apiKey: read(KEYS.apiKey),
   locale: initialLocale(),
   location: initialLocation(),
   themePreference: initialThemePreference(),
   skin: read(KEYS.skin) === 'classic' ? 'classic' : 'paper',
+  fontScale: initialFontScale(),
   ttsVoice: initialTtsVoice(),
   thinking: read(KEYS.thinking) === 'true',
   search: read(KEYS.search) === 'true',
@@ -247,6 +258,12 @@ export const setThemePreference = (themePreference: ThemePreference) => {
 export const setSkin = (skin: Skin) => {
   write(KEYS.skin, skin)
   useSettings.setState({ skin })
+}
+
+export const setFontScale = (fontScale: number) => {
+  const value = isFontScale(fontScale) ? fontScale : 1
+  write(KEYS.fontScale, String(value))
+  useSettings.setState({ fontScale: value })
 }
 
 export const setTtsVoice = (ttsVoice: TtsVoice) => {
