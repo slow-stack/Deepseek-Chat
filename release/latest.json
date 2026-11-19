@@ -1,12 +1,12 @@
 {
-  "versionName": "0.2.8",
-  "downloadUrl": "https://github.com/slow-stack/Deepseek-Chat/releases/download/v0.2.8/DeepseekChat-0.2.8-debug.apk",
+  "versionName": "0.2.9",
+  "downloadUrl": "https://github.com/slow-stack/Deepseek-Chat/releases/download/v0.2.9/DeepseekChat-0.2.9-debug.apk",
   "highlights": [
-    "「重新生成」不再给出和上一版一模一样的回复：生成前会带上已给过的回答并明确要求换角度，请求本身也逐次不同",
-    "旧会话里已经反复生成过的版本也能正确识别，不受历史记录缺少分支信息影响",
-    "编辑提问后重发仍然照旧，不受这次改动影响"
+    "文本里那些没被渲染的小符号现在正常了：紧跟着中文标点的加粗、删除线、以及没带空格的标题都能认出来",
+    "回复正文里的链接只对 http/https 生效，其它协议的链接不再变成可点内容",
+    "代码块和行内代码里的符号一律原样保留，不会被误当成格式"
   ],
-  "notes": "只动重新生成这一条链路，其余行为不变。直接盖装 0.2.7 即可，会话与记忆都保留。",
-  "sha256": "6cba48c611716deca7de344ae065b1abc38caf8ce368d1428728276d98785a8c",
-  "size": 6797380
+  "notes": "直接盖装 0.2.8 即可，会话与记忆都保留。",
+  "sha256": "b0689a53eda5101f402b66d2467036eda8c0b96de8bd706d4ef078df2958925b",
+  "size": 6798180
 }
