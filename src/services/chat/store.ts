@@ -46,6 +46,7 @@ import {
 import { saveTurnToMemory } from './memory.js'
 import { getRejectedFileId, resolveFileBlockKind, selectRejectedFiles } from './fileBlockKind.js'
 import { buildMemoryContext, withMemoryContext } from './memoryPrompt.js'
+import { buildRegenerateNote, withRegenerateNote } from './regenerate.js'
 import {
   toSessionSummary,
   type AssistantMessage,
@@ -923,13 +924,31 @@ export const regenerateReply = (sessionId: string, messageId?: string) => {
     return
   }
   const history = path.slice(0, index - 1)
+  // 同一问题下已经答过的版本。客户端从不发采样参数，同一天的时间快照也完全一样，
+  // 只把上下文重发一遍等于重复同一次请求，模型多半原样复述。
+  // 旧会话可能还没规范化过 parentId，先按线性顺序补齐，否则这里一个也筛不出来；
+  // 补齐后仍对不上（导入的分支链断过）就退回当前路径上的那一版。
+  const normalized = normalizeSession(session)
+  const siblings = normalized.messages
+    .filter(
+      (message): message is AssistantMessage =>
+        message.role === 'assistant' && message.parentId === question.id
+    )
+    .sort((a, b) => a.createdAt - b.createdAt)
+  const current = path[index]
+  const previous =
+    siblings.length > 0
+      ? siblings
+      : current?.role === 'assistant'
+        ? [current as AssistantMessage]
+        : []
   const reply = createReply()
   updateSession(sessionId, (s) => ({
     ...appendBranch(s, question.id, [reply]),
     updatedAt: Date.now(),
   }))
   persist(sessionId)
-  void streamReply(sessionId, reply, { history, question })
+  void streamReply(sessionId, reply, { history, question, previous })
 }
 
 /** 编辑提问后新增同父版本，保留原文件；旧问题的所有回答与后续对话仍可切回。 */
@@ -1040,7 +1059,13 @@ export const retryUpload = (sessionId: string, messageId: string) => {
   void streamReply(sessionId, reply, { history: path.slice(0, index - 1), question })
 }
 
-type Request = { history: Message[]; question: UserMessage; prefix?: AssistantMessage }
+type Request = {
+  history: Message[]
+  question: UserMessage
+  prefix?: AssistantMessage
+  /** 重新生成时已经给过的同题回答，用来让这次的 system 与上次不同 */
+  previous?: AssistantMessage[]
+}
 
 /** 把补传得到的 serverId 写回会话里所有引用同一附件的消息（编辑、重新生成会共用附件） */
 const saveServerIds = (sessionId: string, serverIds: Map<string, string>) => {
@@ -1095,6 +1120,7 @@ const refreshRequest = (sessionId: string, request: Request): Request => {
     history: request.history.map(pick),
     question: pick(request.question),
     prefix: request.prefix,
+    previous: request.previous,
   }
 }
 
@@ -1242,6 +1268,7 @@ const prepareFiles = async (sessionId: string, request: Request, signal: AbortSi
     history: request.history.map(resolve),
     question: resolve(request.question),
     prefix: request.prefix,
+    previous: request.previous,
   }
 }
 
@@ -1585,7 +1612,10 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
           useSettings.getState().apiKey ?? '',
           {
             model: initial.model ?? chatModel(),
-            system: withMemoryContext(SYSTEM_PROMPT, memoryContext),
+            system: withRegenerateNote(
+              withMemoryContext(SYSTEM_PROMPT, memoryContext),
+              buildRegenerateNote(request.previous ?? [])
+            ),
             messages,
             thinking: { type: initial.thinking ? 'enabled' : 'disabled' },
             safety_check: SAFETY_CHECK,
