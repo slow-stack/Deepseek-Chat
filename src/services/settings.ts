@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { API_CAPABILITIES, type ApiCapability } from './api/capability.js'
 import type { TtsVoice } from './api/speech.js'
-import { clampFontSize, DEFAULT_FONT_SIZE } from '../app/fontScale.js'
+import { clampFontSize, DEFAULT_FONT_SIZE, isFontSize } from '../app/fontScale.js'
 import { normalizeLocation, type UserLocation } from './location.js'
 
 export type Locale = 'zh-CN' | 'en-US'
@@ -204,14 +204,35 @@ const readNumber = (key: string, fallback: number, min: number, max: number): nu
   return Number.isFinite(value) && value >= min && value <= max ? value : fallback
 }
 
+/**
+ * 老版本存的是倍数（0.92 / 1 / 1.12 / 1.25 / 1.4），新版本存 px。
+ * 新键没有值时把它按 14px 基准换算过去，别让人升级后字号被悄悄重置。
+ */
+const LEGACY_FONT_SCALE = 'chat-demo:font-scale'
+
+const migrateLegacyFontScale = (): number | null => {
+  const raw = read(LEGACY_FONT_SCALE)
+  if (raw === null) {
+    return null
+  }
+  const scale = Number(raw)
+  write(LEGACY_FONT_SCALE, null)
+  return Number.isFinite(scale) && scale > 0 ? clampFontSize(scale * 14) : null
+}
+
 /** 字号落在 10–22 的整数 px 上，篡改或越界的值退回默认 */
 const initialFontSize = (): number => {
   const raw = read(KEYS.fontSize)
   if (raw === null) {
+    const migrated = migrateLegacyFontScale()
+    if (migrated !== null) {
+      write(KEYS.fontSize, String(migrated))
+      return migrated
+    }
     return DEFAULT_FONT_SIZE
   }
   const value = Number(raw)
-  return Number.isFinite(value) ? clampFontSize(value) : DEFAULT_FONT_SIZE
+  return isFontSize(value) ? value : DEFAULT_FONT_SIZE
 }
 
 export const useSettings = create<Settings>(() => ({
