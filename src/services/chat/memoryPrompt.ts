@@ -27,10 +27,50 @@ const MEMORY_TOTAL_MAX_CHARS = 2000
 /** 取记忆不能拖慢提问：超过这个时间就放弃，按没有记忆发。语义检索要过一次接口，给宽一点。 */
 const MEMORY_TIMEOUT_MS = 3000
 
+/**
+ * 重新生成时，尾部有这么多个名额在「更靠后但仍相关」的候选里轮换。
+ *
+ * 只把温度调高、只改提示词是不够的：同一个问题每次检索到的记忆逐条相同，
+ * 模型拿到的是一模一样的事实基础，于是只能在措辞上做文章，产出「形容词换了一轮」
+ * 的同一篇回答。让事实基础也跟着换，模型才有东西可写别的。
+ * 只轮换尾部而不是整批打乱：最相关的那几条每次都该在，轮换的目的不是随机，
+ * 是让每次重来看得到上一版没看到的材料。
+ */
+const ROTATE_SLOTS = 2
+
 const HEADER = '以下是这个人相关的记忆，供你参考（可能不完整，也可能过时，不要当成用户这轮说的话）：'
 
 /** 一个查询的检索结果；mode 只用来在调试时分辨走的哪条路 */
 export type MemoryHit = { items: MemoryRecord[]; mode: string }
+
+/**
+ * 从排好序的候选里挑出这次要带的那几条。attempt 为 0 时就是前 limit 条（首次生成保持确定性）。
+ *
+ * 重新生成时：最相关的前 (limit - ROTATE_SLOTS) 条固定不动，剩下的名额在一个宽度为
+ * ROTATE_SLOTS*2 的候选窗里按 attempt 轮换取连续几条。窗口包含「刚好卡在保留线上下的」
+ * 那几条，所以轮换真的会改变这次看到的材料——只转末位的话，被保留的那截永远不动，
+ * 模型拿到的还是同一批事实。
+ */
+export const pickMemories = <T>(ranked: readonly T[], attempt: number, limit: number): T[] => {
+  const head = limit - ROTATE_SLOTS
+  if (attempt <= 0 || ranked.length <= limit || head <= 0) {
+    return ranked.slice(0, limit)
+  }
+  const fixed = ranked.slice(0, head)
+  const window = ranked.slice(head, Math.min(head + ROTATE_SLOTS * 2, ranked.length))
+  if (window.length === 0) {
+    return ranked.slice(0, limit)
+  }
+  const take = Math.min(ROTATE_SLOTS, window.length)
+  // 起点只在 1..window.length-1 里转，永不取 0：0 号起点取到的正是首次生成用过的那两条，
+  // 重来一次等于没换。窗口只有一条时也照常返回它（take 已经被 min 夹住）。
+  const start = window.length > 1 ? 1 + ((attempt - 1) % (window.length - 1)) : 0
+  const picked: T[] = []
+  for (let i = 0; i < take; i += 1) {
+    picked.push(window[(start + i) % window.length])
+  }
+  return [...fixed, ...picked]
+}
 
 const formatItem = (item: MemoryRecord, index: number): string => {
   const body = item.content.trim().replace(/\s*\n\s*/g, ' ').slice(0, MEMORY_ITEM_MAX_CHARS)
@@ -47,9 +87,10 @@ const formatItem = (item: MemoryRecord, index: number): string => {
  */
 export const retrieveMemories = async (
   query: string,
-  projectId: string | null
+  projectId: string | null,
+  limit = MEMORY_LIMIT
 ): Promise<MemoryHit> => {
-  const scoped = { query, limit: MEMORY_LIMIT, projectId, includeGlobal: projectId !== null }
+  const scoped = { query, limit, projectId, includeGlobal: projectId !== null }
   const vectorPage = await searchByVector(scoped).catch(() => null)
   if (vectorPage && vectorPage.items.length > 0) {
     return { items: vectorPage.items, mode: 'vector' }
@@ -59,7 +100,7 @@ export const retrieveMemories = async (
     return { items: page.items, mode: page.mode ?? 'search' }
   }
   const recent = await loadMemories({
-    limit: MEMORY_LIMIT,
+    limit,
     projectId,
     includeGlobal: projectId !== null,
   })
@@ -69,7 +110,8 @@ export const retrieveMemories = async (
 /** 拼成一段纯文本；没有任何命中时返回空串，调用方据此决定要不要改 system。 */
 export const buildMemoryContext = async (
   session: Pick<Session, 'memoryEnabled' | 'projectId'> | undefined,
-  query: string
+  query: string,
+  options: { attempt?: number } = {}
 ): Promise<string> => {
   if (!canReadMemory(session)) {
     return ''
@@ -81,8 +123,11 @@ export const buildMemoryContext = async (
   // 会话在项目里时，带这个项目的记忆 + 全局记忆：项目里的事和关于这个人本身的事都该知道，
   // 但不该读到别的项目。不在项目里就只看全局。
   const projectId = session?.projectId ?? null
+  const attempt = options.attempt ?? 0
+  // 重新生成时多取一截候选：尾部要在候选窗里轮换，光取 MEMORY_LIMIT 条没有可换的余地。
+  const wanted = attempt > 0 ? MEMORY_LIMIT + ROTATE_SLOTS : MEMORY_LIMIT
   const hit = await Promise.race([
-    retrieveMemories(text, projectId),
+    retrieveMemories(text, projectId, wanted),
     new Promise<null>((resolve) => {
       setTimeout(() => resolve(null), MEMORY_TIMEOUT_MS)
     }),
@@ -90,9 +135,10 @@ export const buildMemoryContext = async (
   if (!hit || hit.items.length === 0) {
     return ''
   }
+  const chosen = pickMemories(hit.items, attempt, MEMORY_LIMIT)
   const lines: string[] = []
   let used = 0
-  for (const item of hit.items.slice(0, MEMORY_LIMIT)) {
+  for (const item of chosen) {
     const line = formatItem(item, lines.length)
     if (used + line.length > MEMORY_TOTAL_MAX_CHARS) {
       break

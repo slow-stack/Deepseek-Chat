@@ -1599,9 +1599,12 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
         // 记忆注入：按这轮提问去记忆库捞几条相关的，接到 system 后面。
         // 放在 messages 外面而不是拼进用户那条消息：拼进去模型会以为用户自己说的。
         // 整段自己吞错，记忆读不到就当没有，不影响这次提问。
+        // 重新生成时把第几次重来传进去：检索本身是确定的，不轮换就每次拿到同样几条，
+        // 模型只能在措辞上做文章（用户看到的就是「形容词换了一轮」）。
         const memoryContext = await buildMemoryContext(
           getSession(sessionId),
-          prepared.question.content
+          prepared.question.content,
+          { attempt: request.previous?.length ?? 0 }
         ).catch(() => '')
         // 注入成功与否在界面上毫无痕迹，用户没法分辨「没带」和「带了但模型没说」。
         // 回复开头给一小段标记：条数在里头，模型看不见（发送前截掉）。
