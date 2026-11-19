@@ -1,12 +1,12 @@
 {
-  "versionName": "0.2.9",
-  "downloadUrl": "https://github.com/slow-stack/Deepseek-Chat/releases/download/v0.2.9/DeepseekChat-0.2.9-debug.apk",
+  "versionName": "0.2.10",
+  "downloadUrl": "https://github.com/slow-stack/Deepseek-Chat/releases/download/v0.2.10/DeepseekChat-0.2.10-debug.apk",
   "highlights": [
-    "文本里那些没被渲染的小符号现在正常了：紧跟着中文标点的加粗、删除线、以及没带空格的标题都能认出来",
-    "回复正文里的链接只对 http/https 生效，其它协议的链接不再变成可点内容",
-    "代码块和行内代码里的符号一律原样保留，不会被误当成格式"
+    "设置里能调字号了，五档从「小」到「超大」，只放大正文和消息里的字，按钮图标不动",
+    "重新生成这次真的换了个写法：之前只改了提示词，模型在默认温度下还是会写出差不多的段落，现在每次都换采样温度",
+    "字号偏好会记住，下次打开还是你选的那档"
   ],
-  "notes": "直接盖装 0.2.8 即可，会话与记忆都保留。",
-  "sha256": "b0689a53eda5101f402b66d2467036eda8c0b96de8bd706d4ef078df2958925b",
-  "size": 6798180
+  "notes": "直接盖装 0.2.9 即可，会话、记忆与设置都保留。",
+  "sha256": "ad9a68d1a5d700f9d7f444eaf94a5fbc6897b7b675cf4644a5760472e410d72c",
+  "size": 6798888
 }
