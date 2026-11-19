@@ -34,8 +34,8 @@
   min-width: 0;
   padding-left: 4px;
   overflow: hidden;
-  font-size: 18px;
-  line-height: 24px;
+  font-size: calc(18px * var(--ds-text-scale, 1));
+  line-height: calc(24px * var(--ds-text-scale, 1));
   font-weight: 650;
   letter-spacing: -0.01em;
   white-space: nowrap;
@@ -58,7 +58,7 @@
   background: var(--dsw-alias-button-elevated-fill);
   color: var(--dsw-alias-label-primary);
   font: inherit;
-  font-size: 14px;
+  font-size: calc(14px * var(--ds-text-scale, 1));
   font-weight: 500;
   cursor: pointer;
   user-select: none;
@@ -121,7 +121,7 @@
   border: none;
   background: none;
   font: inherit;
-  font-size: 13px;
+  font-size: calc(13px * var(--ds-text-scale, 1));
   color: var(--dsw-alias-label-primary);
   outline: none;
 
@@ -152,8 +152,8 @@
 
 .searchEmpty {
   padding: 16px 10px;
-  font-size: 13px;
-  line-height: 20px;
+  font-size: calc(13px * var(--ds-text-scale, 1));
+  line-height: calc(20px * var(--ds-text-scale, 1));
   color: var(--dsw-alias-label-tertiary);
 }
 
@@ -173,9 +173,9 @@
   min-width: 0;
   padding-left: 10px;
   overflow: hidden;
-  font-size: 13px;
+  font-size: calc(13px * var(--ds-text-scale, 1));
   font-weight: 500;
-  line-height: 20px;
+  line-height: calc(20px * var(--ds-text-scale, 1));
   white-space: nowrap;
   text-overflow: ellipsis;
   color: var(--dsw-alias-label-secondary);
@@ -199,7 +199,7 @@
   border-radius: 8px;
   background: none;
   font: inherit;
-  font-size: 13px;
+  font-size: calc(13px * var(--ds-text-scale, 1));
   font-weight: 600;
   color: var(--dsw-alias-label-secondary);
   cursor: pointer;
@@ -269,8 +269,8 @@
   top: 0;
   z-index: 20;
   padding: 4px 10px;
-  font-size: 11px;
-  line-height: 16px;
+  font-size: calc(11px * var(--ds-text-scale, 1));
+  line-height: calc(16px * var(--ds-text-scale, 1));
   font-weight: 600;
   letter-spacing: 0.06em;
   color: var(--dsw-alias-label-tertiary);
@@ -324,7 +324,7 @@
   min-width: 0;
   margin-left: 4px;
   overflow: hidden;
-  font-size: 14px;
+  font-size: calc(14px * var(--ds-text-scale, 1));
   white-space: nowrap;
   text-overflow: ellipsis;
   /* 和会话标题同一色：入口是导航不是强调，蓝色让它看起来像链接 */
@@ -396,7 +396,7 @@
 
   .headerButton {
     height: 32px;
-    font-size: 14px;
+    font-size: calc(14px * var(--ds-text-scale, 1));
   }
 
   .batchBar {
@@ -409,8 +409,8 @@
 
   .sectionHeader {
     padding: 4px 10px 3px;
-    font-size: 14px;
-    line-height: 22px;
+    font-size: calc(14px * var(--ds-text-scale, 1));
+    line-height: calc(22px * var(--ds-text-scale, 1));
   }
 
   .bottom {
@@ -434,8 +434,8 @@
 
   .settingsLabel {
     margin-left: 10px;
-    font-size: 16px;
-    line-height: 22px;
+    font-size: calc(16px * var(--ds-text-scale, 1));
+    line-height: calc(22px * var(--ds-text-scale, 1));
   }
 }
 

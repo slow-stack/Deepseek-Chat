@@ -7,7 +7,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
+  font-size: calc(13px * var(--ds-text-scale, 1));
   color: var(--dsw-alias-label-tertiary);
 }
 
@@ -22,7 +22,7 @@
 
 .sectionTitle {
   margin: 16px 0 8px;
-  font-size: 13px;
+  font-size: calc(13px * var(--ds-text-scale, 1));
   font-weight: 500;
   color: var(--dsw-alias-label-primary);
 }
@@ -36,14 +36,14 @@
 }
 
 .change {
-  font-size: 13px;
+  font-size: calc(13px * var(--ds-text-scale, 1));
   line-height: 1.6;
   color: var(--dsw-alias-label-secondary);
 }
 
 .notes {
   margin-top: 12px;
-  font-size: 13px;
+  font-size: calc(13px * var(--ds-text-scale, 1));
   line-height: 1.6;
   color: var(--dsw-alias-label-secondary);
 }
@@ -58,9 +58,9 @@
   padding: 0 14px;
   border-radius: 4096px;
   background-color: var(--dsw-alias-button-primary-fill);
-  font-size: 14px;
+  font-size: calc(14px * var(--ds-text-scale, 1));
   font-weight: 500;
-  line-height: 22px;
+  line-height: calc(22px * var(--ds-text-scale, 1));
   color: var(--dsw-alias-label-primary-foreground);
   text-decoration: none;
   white-space: nowrap;
@@ -81,9 +81,9 @@
   padding: 0 14px;
   border: 1px solid var(--dsw-alias-line-default);
   border-radius: 4096px;
-  font-size: 14px;
+  font-size: calc(14px * var(--ds-text-scale, 1));
   font-weight: 500;
-  line-height: 22px;
+  line-height: calc(22px * var(--ds-text-scale, 1));
   color: var(--dsw-alias-label-primary);
   text-decoration: none;
   white-space: nowrap;
@@ -116,30 +116,30 @@
 
 .progressText {
   margin-top: 12px;
-  font-size: 12px;
-  line-height: 18px;
+  font-size: calc(12px * var(--ds-text-scale, 1));
+  line-height: calc(18px * var(--ds-text-scale, 1));
   color: var(--dsw-alias-label-tertiary);
 }
 
 .hint {
   margin-top: 12px;
-  font-size: 13px;
-  line-height: 20px;
+  font-size: calc(13px * var(--ds-text-scale, 1));
+  line-height: calc(20px * var(--ds-text-scale, 1));
   color: var(--dsw-alias-label-secondary);
 }
 
 .error {
   margin-top: 12px;
-  font-size: 13px;
-  line-height: 20px;
+  font-size: calc(13px * var(--ds-text-scale, 1));
+  line-height: calc(20px * var(--ds-text-scale, 1));
   color: var(--dsw-alias-label-error, #d92d20);
 }
 
 .fallbackLink {
   display: inline-block;
   margin-top: 8px;
-  font-size: 13px;
-  line-height: 20px;
+  font-size: calc(13px * var(--ds-text-scale, 1));
+  line-height: calc(20px * var(--ds-text-scale, 1));
   color: var(--dsw-alias-brand-primary);
   text-decoration: underline;
 }

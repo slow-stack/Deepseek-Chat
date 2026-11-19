@@ -5,7 +5,7 @@
   margin: 4px 0 10px;
   color: var(--dsw-alias-label-tertiary);
   font-size: var(--dsw-alias-font-xs-13);
-  line-height: 20px;
+  line-height: calc(20px * var(--ds-text-scale, 1));
 }
 
 .usage {
@@ -24,14 +24,14 @@
 }
 
 .usageLabel {
-  font-size: 14px;
-  line-height: 22px;
+  font-size: calc(14px * var(--ds-text-scale, 1));
+  line-height: calc(22px * var(--ds-text-scale, 1));
   color: var(--dsw-alias-label-primary);
 }
 
 .badge {
-  font-size: 13px;
-  line-height: 20px;
+  font-size: calc(13px * var(--ds-text-scale, 1));
+  line-height: calc(20px * var(--ds-text-scale, 1));
   font-variant-numeric: tabular-nums;
   color: var(--dsw-alias-label-tertiary);
 }
@@ -77,8 +77,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  font-size: 14px;
-  line-height: 22px;
+  font-size: calc(14px * var(--ds-text-scale, 1));
+  line-height: calc(22px * var(--ds-text-scale, 1));
   color: var(--dsw-alias-label-primary);
 }
 
@@ -94,8 +94,8 @@
 
 .hint {
   margin: 0;
-  font-size: 12px;
-  line-height: 18px;
+  font-size: calc(12px * var(--ds-text-scale, 1));
+  line-height: calc(18px * var(--ds-text-scale, 1));
   color: var(--dsw-alias-label-tertiary);
 }
 
@@ -110,8 +110,8 @@
 }
 
 .notice {
-  font-size: 12px;
-  line-height: 18px;
+  font-size: calc(12px * var(--ds-text-scale, 1));
+  line-height: calc(18px * var(--ds-text-scale, 1));
   color: var(--dsw-alias-label-tertiary);
 }
 
@@ -132,8 +132,8 @@
   border: 0;
   background: transparent;
   font-family: inherit;
-  font-size: 14px;
-  line-height: 22px;
+  font-size: calc(14px * var(--ds-text-scale, 1));
+  line-height: calc(22px * var(--ds-text-scale, 1));
   color: var(--dsw-alias-label-primary);
   cursor: pointer;
   text-align: left;
@@ -149,7 +149,7 @@
 }
 
 .rounds {
-  font-size: 12px;
+  font-size: calc(12px * var(--ds-text-scale, 1));
   color: var(--dsw-alias-label-tertiary);
 }
 
@@ -160,8 +160,8 @@
 }
 
 .originalTitle {
-  font-size: 12px;
-  line-height: 18px;
+  font-size: calc(12px * var(--ds-text-scale, 1));
+  line-height: calc(18px * var(--ds-text-scale, 1));
   color: var(--dsw-alias-label-tertiary);
 }
 
@@ -173,8 +173,8 @@
   border-radius: 10px;
   background: var(--dsw-alias-bg-layer-2);
   font-family: inherit;
-  font-size: 12px;
-  line-height: 18px;
+  font-size: calc(12px * var(--ds-text-scale, 1));
+  line-height: calc(18px * var(--ds-text-scale, 1));
   white-space: pre-wrap;
   word-break: break-word;
   color: var(--dsw-alias-label-secondary);

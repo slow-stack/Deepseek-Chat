@@ -6,8 +6,8 @@
 .intro {
   margin: 0 0 12px;
   color: var(--dsw-alias-label-secondary);
-  font-size: 14px;
-  line-height: 22px;
+  font-size: calc(14px * var(--ds-text-scale, 1));
+  line-height: calc(22px * var(--ds-text-scale, 1));
 }
 
 .textarea {
@@ -20,8 +20,8 @@
   background-color: transparent;
   color: var(--dsw-alias-label-primary);
   font: inherit;
-  font-size: 14px;
-  line-height: 22px;
+  font-size: calc(14px * var(--ds-text-scale, 1));
+  line-height: calc(22px * var(--ds-text-scale, 1));
   outline: none;
   resize: vertical;
 }
@@ -40,8 +40,8 @@
   gap: 8px;
   margin-top: 12px;
   color: var(--dsw-alias-label-secondary);
-  font-size: 13px;
-  line-height: 20px;
+  font-size: calc(13px * var(--ds-text-scale, 1));
+  line-height: calc(20px * var(--ds-text-scale, 1));
   cursor: pointer;
 }
 
@@ -57,8 +57,8 @@
   background-color: var(--dsw-alias-bg-layer-3);
   color: var(--dsw-alias-label-tertiary);
   font-family: inherit;
-  font-size: 12px;
-  line-height: 18px;
+  font-size: calc(12px * var(--ds-text-scale, 1));
+  line-height: calc(18px * var(--ds-text-scale, 1));
   white-space: pre-wrap;
   word-break: break-all;
   max-height: 140px;

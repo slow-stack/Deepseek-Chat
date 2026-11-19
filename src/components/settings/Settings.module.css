@@ -37,8 +37,8 @@
   background-color: transparent;
   color: var(--dsw-alias-label-primary);
   font: inherit;
-  font-size: 14px;
-  line-height: 22px;
+  font-size: calc(14px * var(--ds-text-scale, 1));
+  line-height: calc(22px * var(--ds-text-scale, 1));
   text-align: left;
   cursor: pointer;
   user-select: none;
@@ -76,8 +76,8 @@
   min-height: 60px;
   padding: 12px 0;
   color: var(--dsw-alias-label-primary);
-  font-size: 14px;
-  line-height: 22px;
+  font-size: calc(14px * var(--ds-text-scale, 1));
+  line-height: calc(22px * var(--ds-text-scale, 1));
 
   & + & {
     box-shadow: inset 0 1px 0 0 var(--dsw-alias-border-l2-darkmode-thin);
@@ -100,8 +100,8 @@
 }
 
 .label {
-  font-size: 14px;
-  line-height: 22px;
+  font-size: calc(14px * var(--ds-text-scale, 1));
+  line-height: calc(22px * var(--ds-text-scale, 1));
 }
 
 .uploadButton {
@@ -173,8 +173,8 @@
   background-color: transparent;
   color: var(--dsw-alias-label-primary);
   font: inherit;
-  font-size: 14px;
-  line-height: 22px;
+  font-size: calc(14px * var(--ds-text-scale, 1));
+  line-height: calc(22px * var(--ds-text-scale, 1));
   text-align: center;
   white-space: nowrap;
   cursor: pointer;
@@ -193,14 +193,14 @@
 }
 
 .description {
-  font-size: 12px;
-  line-height: 18px;
+  font-size: calc(12px * var(--ds-text-scale, 1));
+  line-height: calc(18px * var(--ds-text-scale, 1));
   color: var(--dsw-alias-label-tertiary);
 }
 
 .error {
-  font-size: 12px;
-  line-height: 18px;
+  font-size: calc(12px * var(--ds-text-scale, 1));
+  line-height: calc(18px * var(--ds-text-scale, 1));
   color: var(--dsw-alias-state-error-primary);
 }
 
@@ -225,8 +225,8 @@
   background-color: transparent;
   color: var(--dsw-alias-label-primary);
   font: inherit;
-  font-size: 12px;
-  line-height: 18px;
+  font-size: calc(12px * var(--ds-text-scale, 1));
+  line-height: calc(18px * var(--ds-text-scale, 1));
   text-align: center;
   cursor: pointer;
   user-select: none;
@@ -267,8 +267,8 @@
   align-items: center;
   box-sizing: border-box;
   height: var(--ds-control-height-xl);
-  font-size: 14px;
-  line-height: 24px;
+  font-size: calc(14px * var(--ds-text-scale, 1));
+  line-height: calc(24px * var(--ds-text-scale, 1));
 }
 
 .apiKeySaved {
@@ -329,7 +329,7 @@
   background: none;
   color: var(--dsw-alias-brand-text);
   font: inherit;
-  line-height: 22px;
+  line-height: calc(22px * var(--ds-text-scale, 1));
   cursor: pointer;
 
   &:disabled {
@@ -422,7 +422,7 @@
     border: none;
     border-radius: 40px;
     background-color: var(--dsw-specific-login-input);
-    font-size: 16px;
+    font-size: calc(16px * var(--ds-text-scale, 1));
   }
 
   .apiKeySaved svg {
@@ -446,8 +446,8 @@
   background-color: var(--dsw-alias-button-primary-fill);
   color: var(--dsw-static-neutral-bluish-00);
   font: inherit;
-  font-size: 17px;
-  line-height: 24px;
+  font-size: calc(17px * var(--ds-text-scale, 1));
+  line-height: calc(24px * var(--ds-text-scale, 1));
   font-weight: 500;
   cursor: pointer;
 
@@ -491,10 +491,68 @@
   }
 }
 
+.fontStepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 10px;
+}
+
+.fontStepperButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  background-color: transparent;
+  color: var(--dsw-alias-label-primary);
+  cursor: pointer;
+  outline: none;
+  transition: background-color var(--ds-transition-duration) var(--ds-ease-in-out);
+
+  &:hover:not(:disabled) {
+    background-color: var(--dsw-specific-selector);
+  }
+
+  &:disabled {
+    color: var(--dsw-alias-label-tertiary);
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+
+  /* 增大的箭头就是把同一个下箭头转过来 */
+  &.fontStepperButtonUp {
+    transform: rotate(180deg);
+  }
+}
+
+.fontStepperValue {
+  min-width: 2.5ch;
+  color: var(--dsw-alias-label-primary);
+  font-family: var(--dsw-font-family);
+  font-size: calc(14px * var(--ds-text-scale, 1));
+  line-height: calc(22px * var(--ds-text-scale, 1));
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.fontStepperUnit {
+  color: var(--dsw-alias-label-tertiary);
+  font-family: var(--dsw-font-family);
+  font-size: calc(13px * var(--ds-text-scale, 1));
+  line-height: calc(20px * var(--ds-text-scale, 1));
+}
+
 .themeHint {
   margin: -4px 0 0;
   color: var(--dsw-alias-label-tertiary);
-  font: var(--dsw-alias-font-xs-13, 13px/20px var(--dsw-font-family));
+  font-family: var(--dsw-font-family);
+  font-size: calc(13px * var(--ds-text-scale, 1));
+  line-height: calc(20px * var(--ds-text-scale, 1));
 }
 
 .serviceInput {
@@ -507,7 +565,7 @@
   background-color: transparent;
   color: var(--dsw-alias-label-primary);
   font: inherit;
-  font-size: 14px;
+  font-size: calc(14px * var(--ds-text-scale, 1));
   outline: none;
 }
 
@@ -525,7 +583,7 @@
   margin: 4px 0 10px;
   color: var(--dsw-alias-label-tertiary);
   font-size: var(--dsw-alias-font-xs-13);
-  line-height: 20px;
+  line-height: calc(20px * var(--ds-text-scale, 1));
 }
 
 .pluginCard {
@@ -536,7 +594,7 @@
 /* 关于分组里的外链 */
 .aboutLink {
   flex-shrink: 0;
-  font-size: 13px;
+  font-size: calc(13px * var(--ds-text-scale, 1));
   color: var(--dsw-alias-brand-primary);
   text-decoration: none;
 

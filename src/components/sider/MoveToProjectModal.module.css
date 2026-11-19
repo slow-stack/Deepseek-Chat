@@ -9,8 +9,8 @@
 
 .empty {
   padding: 8px 2px;
-  font-size: 13px;
-  line-height: 20px;
+  font-size: calc(13px * var(--ds-text-scale, 1));
+  line-height: calc(20px * var(--ds-text-scale, 1));
   color: var(--dsw-alias-label-tertiary);
 }
 
@@ -56,6 +56,6 @@
 
 .count {
   flex-shrink: 0;
-  font-size: 12px;
+  font-size: calc(12px * var(--ds-text-scale, 1));
   color: var(--dsw-alias-label-tertiary);
 }

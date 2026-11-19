@@ -15,8 +15,8 @@
 }
 
 .headerLabel {
-  font-size: 11px;
-  line-height: 16px;
+  font-size: calc(11px * var(--ds-text-scale, 1));
+  line-height: calc(16px * var(--ds-text-scale, 1));
   font-weight: 600;
   letter-spacing: 0.06em;
   color: var(--dsw-alias-label-tertiary);
@@ -25,8 +25,8 @@
 
 .empty {
   padding: 2px 10px 6px;
-  font-size: 12px;
-  line-height: 18px;
+  font-size: calc(12px * var(--ds-text-scale, 1));
+  line-height: calc(18px * var(--ds-text-scale, 1));
   color: var(--dsw-alias-label-tertiary);
   user-select: none;
 }
@@ -72,8 +72,8 @@
   flex: 1;
   min-width: 0;
   overflow: hidden;
-  font-size: 13px;
-  line-height: 20px;
+  font-size: calc(13px * var(--ds-text-scale, 1));
+  line-height: calc(20px * var(--ds-text-scale, 1));
   white-space: nowrap;
   text-overflow: ellipsis;
   color: var(--dsw-alias-label-primary);
@@ -81,8 +81,8 @@
 
 .count {
   flex-shrink: 0;
-  font-size: 11px;
-  line-height: 16px;
+  font-size: calc(11px * var(--ds-text-scale, 1));
+  line-height: calc(16px * var(--ds-text-scale, 1));
   color: var(--dsw-alias-label-tertiary);
   font-variant-numeric: tabular-nums;
 }
@@ -103,7 +103,7 @@
   background-color: var(--dsw-alias-bg-layer-1);
   color: var(--dsw-alias-label-primary);
   font: inherit;
-  font-size: 14px;
+  font-size: calc(14px * var(--ds-text-scale, 1));
   outline: none;
 
   &:focus {

@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import { useSettings, type ThemePreference } from '../services/settings.js'
-import { applyFontScale } from './fontScale.js'
+import { applyFontSize } from './fontScale.js'
 
 export type Theme = 'light' | 'dark'
 
@@ -67,14 +67,14 @@ const applySkin = () => {
 }
 
 /** 正文字号只写一个倍数，具体字号在 CSS 里乘它 */
-const syncFontScale = () => {
-  applyFontScale(useSettings.getState().fontScale)
+const syncFontSize = () => {
+  applyFontSize(useSettings.getState().fontSize)
 }
 
 /** 首屏渲染前同步应用一次，之后随主题设置与系统深浅色变化更新 */
 export const setupTheme = () => {
   applySkin()
-  syncFontScale()
+  syncFontSize()
   syncTheme()
   if (document.readyState !== 'complete') {
     window.addEventListener('load', syncPageBackground, { once: true })
@@ -82,5 +82,5 @@ export const setupTheme = () => {
   query.addEventListener('change', syncTheme)
   useSettings.subscribe(syncTheme)
   useSettings.subscribe(applySkin)
-  useSettings.subscribe(syncFontScale)
+  useSettings.subscribe(syncFontSize)
 }

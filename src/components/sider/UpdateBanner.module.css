@@ -17,7 +17,7 @@
 
 .title {
   overflow: hidden;
-  font-size: 13px;
+  font-size: calc(13px * var(--ds-text-scale, 1));
   font-weight: 500;
   color: var(--dsw-alias-label-primary);
   white-space: nowrap;
@@ -28,7 +28,7 @@
   display: -webkit-box;
   margin-top: 2px;
   overflow: hidden;
-  font-size: 12px;
+  font-size: calc(12px * var(--ds-text-scale, 1));
   line-height: 1.4;
   color: var(--dsw-alias-label-tertiary);
   -webkit-box-orient: vertical;
@@ -40,7 +40,7 @@
   padding: 4px 10px;
   border-radius: 999px;
   background: var(--dsw-alias-button-primary-fill);
-  font-size: 12px;
+  font-size: calc(12px * var(--ds-text-scale, 1));
   color: var(--dsw-alias-label-primary-foreground);
   text-decoration: none;
 }
@@ -57,7 +57,7 @@
   border: none;
   border-radius: 6px;
   background: none;
-  font-size: 16px;
+  font-size: calc(16px * var(--ds-text-scale, 1));
   line-height: 1;
   color: var(--dsw-alias-label-tertiary);
   cursor: pointer;

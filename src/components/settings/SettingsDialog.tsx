@@ -1,6 +1,7 @@
 import clsx from 'clsx'
 import { useRef, useState, type ReactNode } from 'react'
 import {
+  IconChevronDownOutline14,
   IconContextOutline16,
   IconDarkOutline16,
   IconDataOutline16,
@@ -28,7 +29,7 @@ import { SaveCancelled } from '../../services/saveFile.js'
 import { regionCodes, getRegionName, provinces } from '../../services/location.js'
 import {
   isChineseBrowser,
-  setFontScale,
+  setFontSize,
   setLocale,
   setLocation,
   setSkin,
@@ -38,7 +39,7 @@ import {
   type Skin,
   type ThemePreference,
 } from '../../services/settings.js'
-import type { FontScale } from '../../app/fontScale.js'
+import { clampFontSize, FONT_SIZE_MAX, FONT_SIZE_MIN } from '../../app/fontScale.js'
 import { useTranslate, type TranslationKey, type TranslationMessage } from '../../i18n/index.js'
 import { Button } from '../base/Button.js'
 import { Modal } from '../base/Modal.js'
@@ -132,7 +133,7 @@ const SettingsContent = () => {
             <>
               <ThemeSetting />
               <SkinSetting />
-              <FontScaleSetting />
+              <FontSizeSetting />
               <LocaleSetting />
               <TtsVoiceSetting />
               <LocationSetting />
@@ -560,40 +561,48 @@ const SkinSetting = () => {
   )
 }
 
-const fontScaleOptions: { value: FontScale; label: TranslationKey }[] = [
-  { value: 0.92, label: 'settingDialogFontScaleSmallOption' },
-  { value: 1, label: 'settingDialogFontScaleStandardOption' },
-  { value: 1.12, label: 'settingDialogFontScaleLargeOption' },
-  { value: 1.25, label: 'settingDialogFontScaleXLargeOption' },
-  { value: 1.4, label: 'settingDialogFontScaleHugeOption' },
-]
-
-/** 字号项：只放大正文与消息里的字，界面控件尺寸保持不变 */
-const FontScaleSetting = () => {
+/**
+ * 字号项：照 DSH 设置页的做法，直接给 px 数值，右侧上下箭头逐格加减。
+ * 每格 1px，到 10 / 22 的边界时按钮置灰。
+ */
+const FontSizeSetting = () => {
   const t = useTranslate()
-  const fontScale = useSettings((state) => state.fontScale)
-  const label = t('settingDialogFontScaleItemLabel')
+  const fontSize = useSettings((state) => state.fontSize)
+  const label = t('settingDialogFontSizeItemLabel')
+  const step = (delta: number) => {
+    const next = clampFontSize(fontSize + delta)
+    if (next !== fontSize) {
+      setFontSize(next)
+    }
+  }
   return (
     <div className={styles.theme}>
       {label}
-      <div role="radiogroup" aria-label={label} className={styles.themeOptions}>
-        {fontScaleOptions.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            role="radio"
-            aria-checked={fontScale === option.value}
-            className={clsx(
-              styles.themeOption,
-              fontScale === option.value && styles.themeOptionSelected
-            )}
-            onClick={() => setFontScale(option.value)}
-          >
-            {t(option.label)}
-          </button>
-        ))}
+      <div className={styles.fontStepper}>
+        <button
+          type="button"
+          className={styles.fontStepperButton}
+          aria-label={t('settingDialogFontSizeDecrease')}
+          disabled={fontSize <= FONT_SIZE_MIN}
+          onClick={() => step(-1)}
+        >
+          <IconChevronDownOutline14 />
+        </button>
+        <span className={styles.fontStepperValue} aria-live="polite">
+          {fontSize}
+        </span>
+        <button
+          type="button"
+          className={clsx(styles.fontStepperButton, styles.fontStepperButtonUp)}
+          aria-label={t('settingDialogFontSizeIncrease')}
+          disabled={fontSize >= FONT_SIZE_MAX}
+          onClick={() => step(1)}
+        >
+          <IconChevronDownOutline14 />
+        </button>
+        <span className={styles.fontStepperUnit}>{t('settingDialogFontSizeUnit')}</span>
       </div>
-      <p className={styles.themeHint}>{t('settingDialogFontScaleHint')}</p>
+      <p className={styles.themeHint}>{t('settingDialogFontSizeHint')}</p>
     </div>
   )
 }
