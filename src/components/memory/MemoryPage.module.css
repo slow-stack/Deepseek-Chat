@@ -34,9 +34,9 @@
 .title {
   margin: 0;
   color: var(--dsw-alias-label-primary);
-  font-size: 22px;
+  font-size: calc(22px * var(--ds-text-scale, 1));
   font-weight: 650;
-  line-height: 30px;
+  line-height: calc(30px * var(--ds-text-scale, 1));
   letter-spacing: -0.01em;
 }
 
@@ -44,7 +44,7 @@
   margin: 6px 0 0;
   color: var(--dsw-alias-label-tertiary);
   font-size: var(--dsw-alias-font-xs-13);
-  line-height: 20px;
+  line-height: calc(20px * var(--ds-text-scale, 1));
 }
 
 /* 归属切换：横向可滚的一排胶囊，项目多时不换行、不撑高页面 */
@@ -72,7 +72,7 @@
   background: transparent;
   color: var(--dsw-alias-label-secondary);
   font-size: var(--dsw-alias-font-xs-13);
-  line-height: 30px;
+  line-height: calc(30px * var(--ds-text-scale, 1));
   white-space: nowrap;
   cursor: pointer;
 }

@@ -115,7 +115,7 @@
   margin-top: 6px;
 }
 .ds-markdown li::marker {
-  line-height: 28px;
+  line-height: calc(28px * var(--ds-text-scale, 1));
   color: var(--dsw-alias-label-secondary);
 }
 
@@ -221,7 +221,7 @@
 
 .ds-markdown {
   table code {
-    font-size: 13px;
+    font-size: calc(13px * var(--ds-text-scale, 1));
   }
 }
 
@@ -381,5 +381,5 @@
   min-height: 160px;
   padding: 16px;
   color: var(--dsw-alias-label-secondary);
-  font-size: 14px;
+  font-size: calc(14px * var(--ds-text-scale, 1));
 }

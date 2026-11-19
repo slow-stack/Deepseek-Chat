@@ -13,8 +13,8 @@
 
 .label {
   color: var(--dsw-alias-label-primary);
-  font-size: 14px;
-  line-height: 22px;
+  font-size: calc(14px * var(--ds-text-scale, 1));
+  line-height: calc(22px * var(--ds-text-scale, 1));
 }
 
 .input {
@@ -27,7 +27,7 @@
   background-color: transparent;
   color: var(--dsw-alias-label-primary);
   font: inherit;
-  font-size: 14px;
+  font-size: calc(14px * var(--ds-text-scale, 1));
   outline: none;
 }
 
@@ -42,13 +42,13 @@
 .hint {
   color: var(--dsw-alias-label-tertiary);
   font-size: var(--dsw-alias-font-xs-13);
-  line-height: 20px;
+  line-height: calc(20px * var(--ds-text-scale, 1));
 }
 
 .warn {
   color: var(--dsw-alias-state-error-primary);
   font-size: var(--dsw-alias-font-xs-13);
-  line-height: 20px;
+  line-height: calc(20px * var(--ds-text-scale, 1));
 }
 
 .toggle {
@@ -62,8 +62,8 @@
   background-color: transparent;
   color: var(--dsw-alias-label-secondary);
   font: inherit;
-  font-size: 14px;
-  line-height: 22px;
+  font-size: calc(14px * var(--ds-text-scale, 1));
+  line-height: calc(22px * var(--ds-text-scale, 1));
   cursor: pointer;
 }
 
@@ -82,8 +82,8 @@
   align-items: center;
   gap: 8px;
   color: var(--dsw-alias-label-primary);
-  font-size: 14px;
-  line-height: 22px;
+  font-size: calc(14px * var(--ds-text-scale, 1));
+  line-height: calc(22px * var(--ds-text-scale, 1));
   cursor: pointer;
 }
 

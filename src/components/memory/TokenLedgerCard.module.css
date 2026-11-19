@@ -51,7 +51,7 @@
 .intro {
   color: var(--dsw-alias-label-tertiary);
   font-size: var(--dsw-alias-font-xs-13);
-  line-height: 20px;
+  line-height: calc(20px * var(--ds-text-scale, 1));
   margin-bottom: 14px;
 }
 

@@ -39,7 +39,7 @@
   border: 0;
   background: none;
   font: inherit;
-  font-size: 12px;
+  font-size: calc(12px * var(--ds-text-scale, 1));
   color: var(--dsw-alias-label-secondary);
   cursor: pointer;
   text-decoration: underline;
@@ -51,7 +51,7 @@
 
 .title {
   overflow: hidden;
-  font-size: 13px;
+  font-size: calc(13px * var(--ds-text-scale, 1));
   font-weight: 500;
   color: var(--dsw-alias-label-primary);
   white-space: nowrap;
@@ -60,7 +60,7 @@
 
 .count {
   flex-shrink: 0;
-  font-size: 12px;
+  font-size: calc(12px * var(--ds-text-scale, 1));
   font-variant-numeric: tabular-nums;
   color: var(--dsw-alias-label-tertiary);
 }
@@ -91,7 +91,7 @@
 .hint {
   margin: 8px 0 0;
   font-size: var(--dsw-alias-font-xs-13);
-  line-height: 18px;
+  line-height: calc(18px * var(--ds-text-scale, 1));
   color: var(--dsw-alias-label-tertiary);
 }
 

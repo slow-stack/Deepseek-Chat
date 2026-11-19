@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { API_CAPABILITIES, type ApiCapability } from './api/capability.js'
 import type { TtsVoice } from './api/speech.js'
-import { isFontScale } from '../app/fontScale.js'
+import { clampFontSize, DEFAULT_FONT_SIZE } from '../app/fontScale.js'
 import { normalizeLocation, type UserLocation } from './location.js'
 
 export type Locale = 'zh-CN' | 'en-US'
@@ -36,8 +36,8 @@ type Settings = {
   locale: Locale
   themePreference: ThemePreference
   skin: Skin
-  /** 正文字号倍数，1 为标准；只放大文字，不动控件尺寸 */
-  fontScale: number
+  /** 正文字号，单位 px（10–22，默认 14）；只放大文字，不动控件尺寸 */
+  fontSize: number
   location: UserLocation | null
   ttsVoice: TtsVoice
   thinking: boolean
@@ -78,7 +78,7 @@ const KEYS = {
   location: 'chat-demo:location',
   themePreference: 'chat-demo:theme-preference',
   skin: 'chat-demo:skin',
-  fontScale: 'chat-demo:font-scale',
+  fontSize: 'chat-demo:font-size',
   ttsVoice: 'chat-demo:tts-voice',
   thinking: 'chat-demo:thinking',
   search: 'chat-demo:search',
@@ -204,10 +204,14 @@ const readNumber = (key: string, fallback: number, min: number, max: number): nu
   return Number.isFinite(value) && value >= min && value <= max ? value : fallback
 }
 
-/** 字号只接受预设档位，篡改过的值退回标准 */
-const initialFontScale = (): number => {
-  const value = Number(read(KEYS.fontScale))
-  return isFontScale(value) ? value : 1
+/** 字号落在 10–22 的整数 px 上，篡改或越界的值退回默认 */
+const initialFontSize = (): number => {
+  const raw = read(KEYS.fontSize)
+  if (raw === null) {
+    return DEFAULT_FONT_SIZE
+  }
+  const value = Number(raw)
+  return Number.isFinite(value) ? clampFontSize(value) : DEFAULT_FONT_SIZE
 }
 
 export const useSettings = create<Settings>(() => ({
@@ -216,7 +220,7 @@ export const useSettings = create<Settings>(() => ({
   location: initialLocation(),
   themePreference: initialThemePreference(),
   skin: read(KEYS.skin) === 'classic' ? 'classic' : 'paper',
-  fontScale: initialFontScale(),
+  fontSize: initialFontSize(),
   ttsVoice: initialTtsVoice(),
   thinking: read(KEYS.thinking) === 'true',
   search: read(KEYS.search) === 'true',
@@ -260,10 +264,10 @@ export const setSkin = (skin: Skin) => {
   useSettings.setState({ skin })
 }
 
-export const setFontScale = (fontScale: number) => {
-  const value = isFontScale(fontScale) ? fontScale : 1
-  write(KEYS.fontScale, String(value))
-  useSettings.setState({ fontScale: value })
+export const setFontSize = (fontSize: number) => {
+  const value = clampFontSize(fontSize)
+  write(KEYS.fontSize, String(value))
+  useSettings.setState({ fontSize: value })
 }
 
 export const setTtsVoice = (ttsVoice: TtsVoice) => {
