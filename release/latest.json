@@ -1,12 +1,12 @@
 {
-  "versionName": "0.2.7",
-  "downloadUrl": "https://github.com/slow-stack/Deepseek-Chat/releases/download/v0.2.7/DeepseekChat-0.2.7-debug.apk",
+  "versionName": "0.2.8",
+  "downloadUrl": "https://github.com/slow-stack/Deepseek-Chat/releases/download/v0.2.8/DeepseekChat-0.2.8-debug.apk",
   "highlights": [
-    "老会话里那张坏图不再拖死整轮对话：发送前按文件头确认图片真能发，认不出的只留在界面、不随请求发出",
-    "服务端仍然拒收时，自动摘掉被点名的那一张再重发，不再每次重发都卡在同一张图上",
-    "导入的历史会话里没带格式的图片会按文件头补成真实格式，不用重新导入"
+    "「重新生成」不再给出和上一版一模一样的回复：生成前会带上已给过的回答并明确要求换角度，请求本身也逐次不同",
+    "旧会话里已经反复生成过的版本也能正确识别，不受历史记录缺少分支信息影响",
+    "编辑提问后重发仍然照旧，不受这次改动影响"
   ],
-  "notes": "只动附件发送这一层：损坏或格式不受支持的图片不再进入请求上下文，界面上仍能看到原图。直接盖装 0.2.6 即可，会话与记忆都保留。",
-  "sha256": "66b9cf77413243a2ad404c0bdabbfe565c6bec0f95eab4079e889a9a8c3b96cb",
-  "size": 6797034
+  "notes": "只动重新生成这一条链路，其余行为不变。直接盖装 0.2.7 即可，会话与记忆都保留。",
+  "sha256": "6cba48c611716deca7de344ae065b1abc38caf8ce368d1428728276d98785a8c",
+  "size": 6797380
 }
