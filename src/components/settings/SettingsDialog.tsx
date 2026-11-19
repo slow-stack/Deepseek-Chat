@@ -28,6 +28,7 @@ import { SaveCancelled } from '../../services/saveFile.js'
 import { regionCodes, getRegionName, provinces } from '../../services/location.js'
 import {
   isChineseBrowser,
+  setFontScale,
   setLocale,
   setLocation,
   setSkin,
@@ -37,6 +38,7 @@ import {
   type Skin,
   type ThemePreference,
 } from '../../services/settings.js'
+import type { FontScale } from '../../app/fontScale.js'
 import { useTranslate, type TranslationKey, type TranslationMessage } from '../../i18n/index.js'
 import { Button } from '../base/Button.js'
 import { Modal } from '../base/Modal.js'
@@ -130,6 +132,7 @@ const SettingsContent = () => {
             <>
               <ThemeSetting />
               <SkinSetting />
+              <FontScaleSetting />
               <LocaleSetting />
               <TtsVoiceSetting />
               <LocationSetting />
@@ -556,6 +559,45 @@ const SkinSetting = () => {
     </div>
   )
 }
+
+const fontScaleOptions: { value: FontScale; label: TranslationKey }[] = [
+  { value: 0.92, label: 'settingDialogFontScaleSmallOption' },
+  { value: 1, label: 'settingDialogFontScaleStandardOption' },
+  { value: 1.12, label: 'settingDialogFontScaleLargeOption' },
+  { value: 1.25, label: 'settingDialogFontScaleXLargeOption' },
+  { value: 1.4, label: 'settingDialogFontScaleHugeOption' },
+]
+
+/** 字号项：只放大正文与消息里的字，界面控件尺寸保持不变 */
+const FontScaleSetting = () => {
+  const t = useTranslate()
+  const fontScale = useSettings((state) => state.fontScale)
+  const label = t('settingDialogFontScaleItemLabel')
+  return (
+    <div className={styles.theme}>
+      {label}
+      <div role="radiogroup" aria-label={label} className={styles.themeOptions}>
+        {fontScaleOptions.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            role="radio"
+            aria-checked={fontScale === option.value}
+            className={clsx(
+              styles.themeOption,
+              fontScale === option.value && styles.themeOptionSelected
+            )}
+            onClick={() => setFontScale(option.value)}
+          >
+            {t(option.label)}
+          </button>
+        ))}
+      </div>
+      <p className={styles.themeHint}>{t('settingDialogFontScaleHint')}</p>
+    </div>
+  )
+}
+
 /** `reason` 为失败原因的文案 key，展示时按当前语言翻译后填入 `message` 参数。 */
 type Status = (TranslationMessage & { error?: boolean; reason?: TranslationKey }) | null
 
