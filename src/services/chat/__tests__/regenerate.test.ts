@@ -4,7 +4,9 @@ import { test } from 'node:test'
 ;(globalThis as unknown as { __API_ORIGIN__: string }).__API_ORIGIN__ =
   'https://api.deepseek.com'
 
-const { buildRegenerateNote, withRegenerateNote } = await import('../regenerate.js')
+const { buildRegenerateNote, regenerateTemperature, withRegenerateNote } = await import(
+  '../regenerate.js'
+)
 
 type Reply = Parameters<typeof buildRegenerateNote>[0][number]
 
@@ -65,4 +67,30 @@ test('接进 system 时保留原 system 并另起一段，没内容时原样返�
   assert.equal(withRegenerateNote('基础提示', ''), '基础提示')
   assert.equal(withRegenerateNote('基础提示', undefined), '基础提示')
   assert.equal(withRegenerateNote('基础提示', '附加'), '基础提示\n\n附加')
+})
+
+test('首次生成不动服务端默认温度', () => {
+  assert.equal(regenerateTemperature(0), undefined)
+  assert.equal(regenerateTemperature(-1), undefined)
+})
+
+test('重新生成时换一个温度，且每次重来的温度都不同', () => {
+  const first = regenerateTemperature(1)
+  const second = regenerateTemperature(2)
+  const third = regenerateTemperature(3)
+  assert.ok(first !== undefined, '第一次重来要给出温度')
+  assert.notEqual(first, second)
+  assert.notEqual(second, third)
+})
+
+test('温度都落在 Anthropic 协议的 0~1 区间内，越界会被服务端 400 拒绝', () => {
+  for (let count = 1; count <= 12; count += 1) {
+    const value = regenerateTemperature(count)
+    assert.ok(value !== undefined, `第 ${count} 次重来没拿到温度`)
+    assert.ok(value >= 0 && value <= 1, `第 ${count} 次温度越界：${value}`)
+  }
+})
+
+test('重来次数超过温度档位后循环，不会缺值', () => {
+  assert.equal(regenerateTemperature(5), regenerateTemperature(1))
 })
