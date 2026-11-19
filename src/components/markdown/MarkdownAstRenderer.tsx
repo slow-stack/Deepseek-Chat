@@ -137,10 +137,16 @@ const MarkdownPhrasingContentItem = memo(function MarkdownPhrasingContentItem({
       )
     case 'text':
       return <TextContent>{node.value}</TextContent>
+    case 'delete':
+      return (
+        <del>
+          <MarkdownPhrasingContent nodes={node.children} />
+        </del>
+      )
     case 'citation':
       return <CitationLink source={node.source} />
     default:
-      // 删除线、脚注、引用式链接已在解析时换成文本
+      // 脚注与引用式链接已在解析时换成文本
       return null
   }
 })
