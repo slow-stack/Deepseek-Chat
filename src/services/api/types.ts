@@ -185,6 +185,8 @@ export type CreateMessageRequest = {
   thinking: { type: 'enabled' | 'disabled' }
   tools: (DeepseekWebSearchTool | DeepseekReadUrlTool)[]
   safety_check: { level: 'high' }
+  /** 采样温度；不填就用服务端默认值。重新生成时抬高，避免复述上一版 */
+  temperature?: number
   title?: { enabled: boolean }
 }
 

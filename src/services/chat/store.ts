@@ -46,7 +46,7 @@ import {
 import { saveTurnToMemory } from './memory.js'
 import { getRejectedFileId, resolveFileBlockKind, selectRejectedFiles } from './fileBlockKind.js'
 import { buildMemoryContext, withMemoryContext } from './memoryPrompt.js'
-import { buildRegenerateNote, withRegenerateNote } from './regenerate.js'
+import { buildRegenerateNote, regenerateTemperature, withRegenerateNote } from './regenerate.js'
 import {
   toSessionSummary,
   type AssistantMessage,
@@ -1572,6 +1572,8 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
           compaction
         )
         sent = messages
+        // 重新生成时抬高温度：只改 system 文案的话，默认温度下模型仍会写出高度相似的段落
+        const temperature = regenerateTemperature(request.previous?.length ?? 0)
         // 联网搜索：配了自己的接口就由客户端先搜，结果作为一对工具块回填给界面，
         // 同时把正文拼进本轮提问；没配才声明服务端工具，交给服务端在对话里执行。
         // 两条路互斥，否则同一轮会搜两遍、钱花两遍。
@@ -1620,6 +1622,7 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
             thinking: { type: initial.thinking ? 'enabled' : 'disabled' },
             safety_check: SAFETY_CHECK,
             tools: serverTools((initial.search ?? false) && !ownSearch),
+            ...(temperature === undefined ? {} : { temperature }),
             ...(titleRequests.has(controller) ? { title: { enabled: true } } : {}),
           },
           controller.signal
