@@ -1,4 +1,5 @@
 import { translate, type TranslationMessage } from '../../i18n/index.js'
+import { resizeUploadImage } from '../../utils/resizeUploadImage.js'
 import type { ApiCapability } from './capability.js'
 import { readMessageEvent } from './parseEvent.js'
 import { readServerSentEvents } from './sse.js'
@@ -139,7 +140,7 @@ export const uploadFile = async (
   if (purpose) {
     form.append('purpose', purpose)
   }
-  form.append('file', file)
+  form.append('file', purpose === null ? await resizeUploadImage(file, signal) : file)
   const endpoint = resolveEndpointFor('chat', apiKey)
   const response = await request(`${endpoint.anthropic}/files`, {
     method: 'POST',
