@@ -44,6 +44,7 @@ import {
   toRequestMessages,
 } from './reply.js'
 import { saveTurnToMemory } from './memory.js'
+import { takeNewSessionMemoryEnabled } from './newSessionMemory.js'
 import { getRejectedFileId, resolveFileBlockKind, selectRejectedFiles } from './fileBlockKind.js'
 import { buildMemoryContext, withMemoryContext } from './memoryPrompt.js'
 import { buildRegenerateNote, regenerateTemperature, withRegenerateNote } from './regenerate.js'
@@ -855,6 +856,9 @@ export const sendMessage = (targetSessionId: string | null) => {
     return false
   }
   if (sessionId === null) {
+    // 新对话的记忆意愿在输入框里就定下了（那时还没有会话可写），这里随手写进会话，
+    // 第一条消息就已经处在正确的闸门后面；读走即复位，不粘到下一个新对话。
+    const memoryEnabled = takeNewSessionMemoryEnabled()
     const session: Session = {
       id: createId(),
       title: '',
@@ -862,6 +866,7 @@ export const sendMessage = (targetSessionId: string | null) => {
       updatedAt: now,
       messages: [],
       rootMessageId: null,
+      ...(memoryEnabled ? {} : { memoryEnabled: false }),
     }
     sessionId = session.id
     touchSession(session.id)

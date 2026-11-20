@@ -12,6 +12,10 @@ import { setSearch, setThinking, useSettings } from '../../services/settings.js'
 import { useIsMobile } from '../../app/viewport.js'
 import { isMemoryEnabled } from '../../services/chat/memory.js'
 import {
+  setNewSessionMemoryEnabled,
+  useNewSessionMemory,
+} from '../../services/chat/newSessionMemory.js'
+import {
   sendMessage,
   setMemoryEnabled,
   stopReply,
@@ -60,11 +64,15 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
   const importingHistory = useChatStore((state) => state.importingHistory)
   const isMobile = useIsMobile()
   const search = useSettings((state) => state.search)
-  /** 会话级记忆开关：读已打开会话的闸门状态，新对话（无 sessionId）不显示 */
+  /**
+   * 会话级记忆开关。已落库的会话读它自己的字段；新对话还没有会话，读的就是
+   * 「这条新对话的意愿」，发送第一条消息时随会话一起落库。
+   */
   const session = useChatStore((state) =>
     sessionId === null ? undefined : state.sessionCache[sessionId]
   )
-  const memoryEnabled = isMemoryEnabled(session)
+  const pendingMemoryEnabled = useNewSessionMemory((state) => state.enabled)
+  const memoryEnabled = sessionId === null ? pendingMemoryEnabled : isMemoryEnabled(session)
   /** 记忆插件关着时，这个会话级开关也不该出现——整套记忆等于没装 */
   const memoryPluginOn = useSettings((state) => state.memoryPluginEnabled)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -240,7 +248,7 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
               <span className={styles.toggleLabel}>{t('search')}</span>
             </button>
           </Tooltip>
-          {sessionId === null || !memoryPluginOn ? null : (
+          {!memoryPluginOn ? null : (
             <Tooltip content={memoryEnabled ? t('memoryOnHint') : t('memoryOffHint')}>
               <button
                 type="button"
@@ -250,7 +258,13 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
                 )}
                 aria-label={memoryEnabled ? t('memoryOn') : t('memoryOff')}
                 aria-pressed={memoryEnabled}
-                onClick={() => setMemoryEnabled(sessionId, !memoryEnabled)}
+                onClick={() => {
+                  if (sessionId === null) {
+                    setNewSessionMemoryEnabled(!memoryEnabled)
+                  } else {
+                    setMemoryEnabled(sessionId, !memoryEnabled)
+                  }
+                }}
               >
                 <IconBrainOutline14 />
                 {/* 关掉时不写「记忆已关闭」：四个字占半行、还老在眼前提醒一件没发生的事。
