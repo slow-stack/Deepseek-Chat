@@ -5,6 +5,7 @@ import { lastAutoDigestAt, markAutoDigestAt, useSettings } from '../settings.js'
 import { getVisibleMessages } from './branches.js'
 import { estimateTokens } from './compaction.js'
 import * as db from './db.js'
+import { isMemoryEnabled } from './memory.js'
 import { exportLocalMemories, saveLocalMemory } from './memoryStore.js'
 import { recordTokenUsage } from './tokenLedger.js'
 import { getReplyText } from './reply.js'
@@ -60,13 +61,26 @@ const sessionText = (session: Session): string => {
 const digestedIds = async (): Promise<Set<string>> =>
   new Set((await exportLocalMemories()).map((record) => record.id))
 
-/** 还没整理过的会话，最近改过的排前面 */
-export const listDigestPending = async (): Promise<SessionSummary[]> => {
-  const done = await digestedIds()
-  return (await db.loadSessionSummaries())
-    .filter((summary) => !done.has(digestMemoryId(summary.id)))
+/**
+ * 待整理名单的纯函数部分：去掉整理过的、去掉记忆已关闭的，最近改过的排前面。
+ *
+ * 记忆开关关掉的会话不在这里出现：它们永不入库，自动整理更不该替用户把它们
+ * 沉淀进去。不过滤的话它们会一直算「待整理」，每批都占着位置，后面真该整理的
+ * 永远排不上。
+ */
+export const pickDigestPending = <T extends { id: string; updatedAt: number; memoryEnabled?: boolean }>(
+  summaries: readonly T[],
+  done: ReadonlySet<string>
+): T[] =>
+  summaries
+    .filter((summary) => summary.memoryEnabled !== false && !done.has(digestMemoryId(summary.id)))
     .sort((a, b) => b.updatedAt - a.updatedAt)
-}
+
+/**
+ * 还没整理过的会话，最近改过的排前面。
+ */
+export const listDigestPending = async (): Promise<SessionSummary[]> =>
+  pickDigestPending(await db.loadSessionSummariesWithMemory(), await digestedIds())
 
 export type DigestProgress = {
   total: number
@@ -119,6 +133,12 @@ export const digestSessions = async (
       const session = await db.loadSession(summary.id)
       if (!session) {
         outcome.failed += 1
+        continue
+      }
+      // 列表已经筛过一遍，这里再挡一次：整理期间用户可能在开关上反悔，
+      // 或者别的调用方直接拿 id 进来。记忆关掉就不该被写进库。
+      if (!isMemoryEnabled(session)) {
+        outcome.skipped += 1
         continue
       }
       const body = sessionText(session)

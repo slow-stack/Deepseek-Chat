@@ -10,8 +10,13 @@ export type StoredFile = {
   blob: Blob
 }
 
-/** 文件引用留在摘要中，删除会话时通过索引判断原件是否仍被引用。 */
-type StoredSessionSummary = SessionSummary & { fileIds: string[] }
+/**
+ * 文件引用留在摘要中，删除会话时通过索引判断原件是否仍被引用。
+ *
+ * `memoryEnabled` 也留一份：整理历史会话时要在**不打开会话**的前提下跳过
+ * 「记忆已关闭」的那些，否则它们会一直占着自动整理的批次，永远整理不完。
+ */
+type StoredSessionSummary = SessionSummary & { fileIds: string[]; memoryEnabled: boolean }
 
 interface ChatDB extends DBSchema {
   /** 当前使用的会话，界面读写都在这里 */
@@ -37,6 +42,7 @@ let dbPromise: Promise<IDBPDatabase<ChatDB>> | null = null
 
 const storedSummary = (session: Session): StoredSessionSummary => ({
   ...toSessionSummary(session),
+  memoryEnabled: session.memoryEnabled !== false,
   fileIds: [
     ...new Set(
       session.messages.flatMap((message) =>
@@ -79,6 +85,42 @@ const getDB = () =>
 
 export const loadSessionSummaries = async (): Promise<SessionSummary[]> =>
   (await (await getDB()).getAll('sessionSummaries')).map(toSessionSummary)
+
+/**
+ * 带记忆开关的摘要。整理历史会话时要按它筛掉「记忆已关闭」的会话，
+ * 而列表本身不需要这个字段（每次开关都要重排列表不划算）。
+ *
+ * 升级前写下的摘要没有 `memoryEnabled`：那个字段的真相在 sessions 表里，
+ * 这里读一次真值并写回摘要，之后就不用再回表了。不回填的话，用户在旧版本
+ * 里关掉记忆的会话会在升级后被当成开启、被自动整理写进记忆库。
+ */
+export const loadSessionSummariesWithMemory = async () => {
+  const db = await getDB()
+  const stored = await db.getAll('sessionSummaries')
+  const legacy = stored.filter((summary) => summary.memoryEnabled === undefined)
+  if (legacy.length > 0) {
+    const tx = db.transaction(['sessions', 'sessionSummaries'], 'readwrite')
+    const healed = await Promise.all(
+      legacy.map(async (summary) => {
+        const session = await tx.objectStore('sessions').get(summary.id)
+        // 会话已经不在了（比如列表残留）就按开启处理，跟会话侧语义一致
+        const memoryEnabled = session ? session.memoryEnabled !== false : true
+        await tx.objectStore('sessionSummaries').put({ ...summary, memoryEnabled })
+        return { id: summary.id, memoryEnabled }
+      })
+    )
+    await tx.done
+    const flags = new Map(healed.map((item) => [item.id, item.memoryEnabled]))
+    return stored.map((summary) => ({
+      ...toSessionSummary(summary),
+      memoryEnabled: flags.get(summary.id) ?? summary.memoryEnabled !== false,
+    }))
+  }
+  return stored.map((summary) => ({
+    ...toSessionSummary(summary),
+    memoryEnabled: summary.memoryEnabled !== false,
+  }))
+}
 
 export const loadSession = async (id: string): Promise<Session | undefined> =>
   (await getDB()).get('sessions', id)
@@ -125,9 +167,12 @@ export const renameSession = async (id: string, title: string): Promise<void> =>
   ])
 }
 
-/** 未打开的会话也可改记忆开关：只动 sessions 表，摘要列表不带这个字段。 */
+/**
+ * 未打开的会话也可改记忆开关：sessions 与 sessionSummaries 一起写，
+ * 两处不一致的话「整理历史会话」会用旧的开关判断，把刚关掉的会话又整理进去。
+ */
 export const setMemoryEnabled = async (id: string, memoryEnabled: boolean): Promise<void> => {
-  const tx = (await getDB()).transaction('sessions', 'readwrite')
+  const tx = (await getDB()).transaction(['sessions', 'sessionSummaries'], 'readwrite')
   await Promise.all([
     (async () => {
       try {
@@ -136,6 +181,7 @@ export const setMemoryEnabled = async (id: string, memoryEnabled: boolean): Prom
         if (session) {
           session.memoryEnabled = memoryEnabled
           await sessions.put(session)
+          await tx.objectStore('sessionSummaries').put(storedSummary(session))
         }
       } catch (error) {
         abortTransaction(tx)
