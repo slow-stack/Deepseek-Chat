@@ -1240,7 +1240,10 @@ const prepareFiles = async (sessionId: string, request: Request, signal: AbortSi
   }
 
   const pending = new Map<string, FileAttachment>()
-  for (const [user] of getContextRounds(request.history).toReversed()) {
+  // toReversed 是 ES2023 的（Chrome 110 / Safari 16.4 才有），而 rspack 的编译目标写的是
+  // chrome >= 105 / safari >= 16 —— 在这条缝里的内核会直接 TypeError，发送带附件的消息就报错。
+  // 换成展开再 reverse，语义一样，谁都能跑。
+  for (const [user] of [...getContextRounds(request.history)].reverse()) {
     for (const file of user.files) {
       if (!file.serverId && !serverIds.has(file.id) && !pending.has(file.id)) {
         pending.set(file.id, file)
@@ -1509,7 +1512,14 @@ const runClientSearch = async (
 
 /** 把搜索结果接到最后一条用户消息上，保持一问一答的轮次结构 */
 const appendSearchContext = (messages: MessageParam[], context: string) => {
-  const index = messages.findLastIndex((message) => message.role === 'user')
+  // findLastIndex 是 ES2023 的，同 toReversed 一样落在编译目标的缝里，手写倒序找。
+  let index = -1
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    if (messages[i].role === 'user') {
+      index = i
+      break
+    }
+  }
   const message = messages[index]
   if (!message || message.role !== 'user' || !context) {
     return

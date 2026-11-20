@@ -44,9 +44,61 @@
     <meta name="apple-mobile-web-app-title" content="DeepseekChat" />
     <title>DeepseekChat</title>
     <script>
-      // 开屏只在 App / 手机网页里出现：DSH 面板内嵌（iframe）直接跳过，
-      // 桌面宽屏浏览器也跳过（地址后加 ?boot=1 可强制预览）。
       ;(function () {
+        var dark = false
+        try {
+          var pref = localStorage.getItem('chat-demo:theme-preference')
+          var sysDark =
+            !!window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+          dark = pref === 'dark' || ((pref === null || pref === 'system') && sysDark)
+        } catch (e) {}
+
+        // 兜底一：JS 包根本没下载/执行时，#root 会一直是空的，页面就是一片白。
+        // 这段不依赖任何模块（包正是没来的那个东西），也不管是手机还是桌面——
+        // 桌面宽屏反而更容易撞上：那里连开屏都没有，白就是纯白。
+        window.setTimeout(function () {
+          var container = document.getElementById('root')
+          if (!container || container.childNodes.length > 0 || window.__dsAppMounted) return
+
+          var zh = true
+          try {
+            zh = (navigator.language || 'zh').toLowerCase().indexOf('zh') === 0
+          } catch (e) {}
+          var wrap = document.createElement('div')
+          wrap.setAttribute('role', 'alert')
+          wrap.style.cssText =
+            'position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;text-align:center;background:' +
+            (dark ? '#131315' : '#faf9f6') +
+            ';color:' +
+            (dark ? '#e8e4da' : '#201f1b') +
+            ";font:400 15px/1.7 system-ui,-apple-system,'Segoe UI',Roboto,'PingFang SC','Microsoft YaHei',sans-serif"
+          var card = document.createElement('div')
+          card.style.cssText = 'max-width:400px'
+          var title = document.createElement('div')
+          title.style.cssText = 'font-size:17px;font-weight:600;margin-bottom:10px'
+          title.textContent = zh ? '页面没能加载出来' : 'The page failed to load'
+          var lead = document.createElement('div')
+          lead.style.cssText = 'font-size:14px;opacity:0.75;margin-bottom:20px'
+          lead.textContent = zh
+            ? '有一个文件没能下载下来。多半是网络被拦了，或者浏览器版本太旧。重新加载一次试试。'
+            : 'A file could not be downloaded. It is usually a blocked network or an old browser. Try reloading.'
+          var btn = document.createElement('button')
+          btn.type = 'button'
+          btn.textContent = zh ? '重新加载' : 'Reload'
+          btn.style.cssText =
+            'appearance:none;border:0;cursor:pointer;height:38px;padding:0 20px;border-radius:19px;background:#3964fe;color:#fff;font:inherit;font-size:14px'
+          btn.onclick = function () {
+            location.reload()
+          }
+          card.appendChild(title)
+          card.appendChild(lead)
+          card.appendChild(btn)
+          wrap.appendChild(card)
+          document.body.appendChild(wrap)
+        }, 5000)
+
+        // 开屏只在 App / 手机网页里出现：DSH 面板内嵌（iframe）直接跳过，
+        // 桌面宽屏浏览器也跳过（地址后加 ?boot=1 可强制预览）。
         var force = /[?&]boot=1\b/.test(location.search)
         if (!force) {
           var embedded = false
@@ -58,24 +110,17 @@
           if (embedded || window.innerWidth >= 768) return
         }
 
-        var dark = false
-        try {
-          var pref = localStorage.getItem('chat-demo:theme-preference')
-          var sysDark =
-            !!window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
-          dark = pref === 'dark' || ((pref === null || pref === 'system') && sysDark)
-        } catch (e) {}
         var reduce =
           !!window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-        var root = document.documentElement
+        var html = document.documentElement
         // 让 bootSplash.ts 从「首帧时刻」而不是「JS 包求值时刻」开始算最短停留
         window.__bootStartedAt = window.performance ? window.performance.now() : 0
-        root.setAttribute('data-boot', dark ? 'dark' : 'light')
-        if (reduce) root.setAttribute('data-boot-reduce', '')
-        root.style.backgroundColor = dark ? '#131315' : '#faf9f6'
+        html.setAttribute('data-boot', dark ? 'dark' : 'light')
+        if (reduce) html.setAttribute('data-boot-reduce', '')
+        html.style.backgroundColor = dark ? '#131315' : '#faf9f6'
 
-        // 兜底：JS 包没跑起来（离线、白屏）时也必须让出画面，别把人锁在开屏上。
+        // 兜底二：包里某个模块求值失败、开屏永远不会被撤走时，别把人锁在动画上。
         window.setTimeout(function () {
           var el = document.getElementById('boot-splash')
           if (!el) return

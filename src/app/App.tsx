@@ -31,6 +31,7 @@ import { autoDigest } from '../services/chat/memoryDigest.js'
 import { useEnabledPlugins } from '../plugins/registry.js'
 import { openChatPage, useAppPage } from './pageState.js'
 import { dismissBootSplash } from './bootSplash.js'
+import { clearFatalScreen } from './fatalScreen.js'
 import styles from './App.module.css'
 
 export const App = () => {
@@ -130,6 +131,11 @@ export const App = () => {
   useEffect(() => {
     if (ready || initError) {
       dismissBootSplash()
+      // 告诉兜底逻辑「App 已经跑起来了」：此后零星的异步报错走局部提示，
+      // 不该再把整页盖成错误页。index.html 的内联兜底也读这个标记。
+      window.__dsAppMounted = true
+      // 启动早期可能已经有报错先占了屏（那种报错未必致命），App 真起来了就撤掉。
+      clearFatalScreen()
     }
   }, [ready, initError])
 
