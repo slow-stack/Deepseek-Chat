@@ -159,16 +159,17 @@ const initialThemePreference = (): ThemePreference => {
 const initialTtsVoice = (): TtsVoice => (read(KEYS.ttsVoice) === 'tide' ? 'tide' : 'stella')
 
 /**
- * 记忆插件默认关着（装上不出现，用户想要才开）。
- * 例外：已经填过服务地址或 token 的，说明本来就在用，升级后不能突然把它藏起来。
+ * 记忆插件默认开着：记忆默认存在本机这个应用里，离线可用，不需要先配服务。
+ * 装上就该有入口，用户想静音某条会话就按会话关，不想用整套就连插件一起关。
+ *
+ * 只在用户**主动**在设置里关过（存了 'false'）时才保持关闭——那时候连入口都不该再长出来。
+ * 老版本可能在没存过值的情况下被判定为关闭，这里不再沿用「没填服务地址＝没装」的旧兜底：
+ * 记忆服务地址是可选的远端接法，不该拿来当作插件有没有装的判据。
  */
-const initialMemoryPluginEnabled = (): boolean => {
-  const saved = read(KEYS.memoryPluginEnabled)
-  if (saved === 'true' || saved === 'false') {
-    return saved === 'true'
-  }
-  return Boolean(read(KEYS.memoryServiceUrl) || read(KEYS.memoryServiceToken))
-}
+export const resolveMemoryPluginEnabled = (saved: string | null): boolean => saved !== 'false'
+
+const initialMemoryPluginEnabled = (): boolean =>
+  resolveMemoryPluginEnabled(read(KEYS.memoryPluginEnabled))
 
 /** 每条能力都补齐成三个空串，读的时候不用到处判空 */
 const emptyOverride = (): EndpointOverride => ({ baseUrl: '', apiKey: '', model: '' })
