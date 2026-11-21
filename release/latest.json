@@ -1,14 +1,12 @@
 {
-  "versionName": "0.2.13",
-  "downloadUrl": "https://github.com/slow-stack/Deepseek-Chat/releases/download/v0.2.13/DeepseekChat-0.2.13-debug.apk",
+  "versionName": "0.2.14",
+  "downloadUrl": "https://github.com/slow-stack/Deepseek-Chat/releases/download/v0.2.14/DeepseekChat-0.2.14-debug.apk",
   "highlights": [
-    "新对话也有记忆开关了：以前开关只在已打开的会话里出现，新对话第一句就默认入库；现在没开口之前也能先关掉",
-    "关掉记忆的会话，那一整段既不入库、也不会被自动整理，历史里关过的老会话升级后也一并补上",
-    "网页打不开时不再白屏：以前加载失败只会默默变成一片空白，现在会说明可能是网络被拦或浏览器太旧，并给一个重新加载按钮",
-    "顺手修了一个旧内核踩雷点：两处新语法会让 Chrome 105～109、Safari 16.0～16.3 发带附件的消息时直接崩",
-    "大图上传前先缩到 4096 再发，省流量也少失败"
+    "记忆开关默认就是开着的：以前没填过记忆服务地址的机器，整个记忆插件会被当成「已停用」，新对话里根本看不到那个开关",
+    "装上就有入口：不用先配置任何服务地址，打开新对话就能看到「记忆」按钮，想关掉也随时能关",
+    "已经显式关掉过的机器不会被动打开，升级只影响没动过设置的那些"
   ],
-  "notes": "直接盖装 0.2.11 或 0.2.12 即可，会话、记忆与设置都保留。网页版 https://slow-stack.github.io/Deepseek-Chat/ 已同步更新。",
-  "sha256": "0423e66668b318976c344dccdd606b52157683322430d3090a150e290bb0a9eb",
-  "size": 6804136
+  "notes": "直接盖装 0.2.13 即可，会话、记忆与设置都保留。网页版 https://slow-stack.github.io/Deepseek-Chat/ 已同步更新。",
+  "sha256": "69a97a9576bc9238d7c2567693f866f355a31d4b5c5a5abfe228a30113be154f",
+  "size": 7046080
 }
