@@ -83,7 +83,8 @@ PUT    /files/<sha256>         → 上传附件原件，已存在直接 200（�
 和 `format.ts` 的 `SessionFile`（`EXPORT_FORMAT_VERSION = 3`）——**但那个格式装不下 `Session`**。
 
 `SessionFile` 只有七个字段：`id`、`title`、`pinned`、`current_message_id`、`inserted_at`、
-`updated_at`、`messages`（`format.ts:28-38`）。而 `Session` 还多四个：
+`updated_at`、`messages`（`format.ts:28-38`）。而 `Session` 还多三个字段，另有一个字段虽然同名
+但值不对：
 
 | `Session` 字段 | 导出格式里 | 丢了会怎样 |
 | --- | --- | --- |
@@ -93,7 +94,7 @@ PUT    /files/<sha256>         → 上传附件原件，已存在直接 200（�
 | `pinned` | 有字段，但写了死值 | 导出/导入两个方向都丢置顶 |
 
 导入方向也一样：`toLocal.ts:274-283` 的 `toLocalSession()` 只拼 `id`/`title`/`createdAt`/
-`updatedAt` 加 `buildTree()`，这四个字段一个都不带回来。
+`updatedAt` 加 `buildTree()`，这几个字段一个都不带回来。
 
 `memoryEnabled` 那条最要命，因为它是**静默降级**：`isMemoryEnabled` 判的是
 `session?.memoryEnabled !== false`，字段一丢就回到「开」。用户明确关过的会话，
@@ -238,10 +239,10 @@ https + 自签证书并让设备信任。**每次换内网 IP 都得改配置、
 1. chat-sync 服务：存储 + 六个接口 + Bearer 鉴权 + CORS 头。先能跑，先本机 `curl` 通。
 2. 序列化对接：把信封（第四节）原样存进去，`GET` 出来能读回 `Session`。
    **验收基准必须是一条「关过记忆 + 归过项目 + 置顶过 + 压缩过」的会话**——
-   用干净会话测，上面四个字段丢了也看不出来。
-   做法：导出 ZIP → 上传 → 另一份空库拉下来 → 逐字段比对，
-   四条都要断言 `memoryEnabled === false`、`projectId` 相同、`pinned === true`、
-   `compaction.upTo` 相同。反过来也要测一遍：本地 `false` 的会话经同步回来仍是 `false`。
+   用干净会话测，这几个字段丢了也看不出来。
+   做法：导出 ZIP → 上传 → 另一份空库拉下来 → 逐字段比对，四条都要断言：
+   `memoryEnabled === false`、`projectId` 相同、`pinned === true`、`compaction.upTo` 相同。
+   反过来也要测一遍：本地 `false` 的会话经同步回来仍是 `false`。
 3. App 侧 `syncQueue.ts`：先只做「写完入队、串行 PUT」，不做拉取。
 4. App 侧 `syncPull.ts`：启动拉一次，定时拉，冲突进副本分组。
 5. 接入方式：先在局域网跑通，再决定 Tailscale 还是 Tunnel。
