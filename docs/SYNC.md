@@ -58,7 +58,7 @@ chat-sync/
 ```
 GET    /health                 → { ok, version, contract }
 GET    /sessions?since=<ms>    → [{ id, version, updatedAt, deleted }]   变化的会话，不含正文
-GET    /sessions/<id>          → 会话 JSON + { version }
+GET    /sessions/<id>          → 信封（第四节），外层带 version
 PUT    /sessions/<id>          → 整条覆盖，body 带 expectedVersion；不匹配回 409 + 当前 version
 DELETE /sessions/<id>          → 软删，列表里以 deleted=true 出现，客户端据此删本地
 GET    /files/<sha256>         → 附件原件
@@ -75,19 +75,61 @@ PUT    /files/<sha256>         → 上传附件原件，已存在直接 200（�
 （沿用 `chat-demo:memory-service-token` 那套 key 的形状，另起 `chat-demo:sync-token`）。
 **`/health` 之外全部要鉴权**，包括 `GET /sessions`。
 
-## 四、序列化：复用导出 ZIP 那一套
+## 四、序列化：导出格式外面套一层信封
 
-会话 JSON 直接复用 `src/services/chat/history/toArchive.ts` 的 `toSessionFile()`
-和 `format.ts` 里的 `SessionFile` 类型（`EXPORT_FORMAT_VERSION = 3`）。
+### 直接复用 `SessionFile` 不够
 
-理由很实在：**同步和导入导出共用同一个序列化，就不会出现「导出能开、同步打不开」。**
-那种问题最难排查——用户手里有文件、打不开、看不出是哪一层坏的。
+内层确实要复用 `src/services/chat/history/toArchive.ts` 的 `toSessionFile()`
+和 `format.ts` 的 `SessionFile`（`EXPORT_FORMAT_VERSION = 3`）——**但那个格式装不下 `Session`**。
 
-代价是这套格式带一些同步用不上的东西（`inserted_at`、`fragments` 的分段结构、
-索引条目里的 `message_count`）。接受，因为另一条路是维护两套转换、各自演化，迟早对不上。
+`SessionFile` 只有七个字段：`id`、`title`、`pinned`、`current_message_id`、`inserted_at`、
+`updated_at`、`messages`（`format.ts:28-38`）。而 `Session` 还多四个：
 
-反向从 `SessionFile` 转回 `Session` 用现成的导入侧代码（`src/services/chat/history/` 下的读取路径），
-不新写一份。
+| `Session` 字段 | 导出格式里 | 丢了会怎样 |
+| --- | --- | --- |
+| `projectId` | 没有 | 归属信息没了，同步回来全掉进「未归类」 |
+| `memoryEnabled` | 没有 | **语义反转**：原本关掉记忆的会话，同步到另一台设备变成开启 |
+| `compaction` | 没有 | 已压缩的上下文摘要丢了，那台设备会拿原文重发，token 白烧一遍 |
+| `pinned` | 有字段，但写了死值 | 导出/导入两个方向都丢置顶 |
+
+导入方向也一样：`toLocal.ts:274-283` 的 `toLocalSession()` 只拼 `id`/`title`/`createdAt`/
+`updatedAt` 加 `buildTree()`，这四个字段一个都不带回来。
+
+`memoryEnabled` 那条最要命，因为它是**静默降级**：`isMemoryEnabled` 判的是
+`session?.memoryEnabled !== false`，字段一丢就回到「开」。用户明确关过的会话，
+同步一圈回来开始往记忆库里写，而且没有任何提示。
+
+`pinned: false` 是 `toArchive.ts:262` 里硬编码的，`toIndexEntry` 里 `:274` 也是。
+这是**导出格式自身的 bug**（导出再导入就丢置顶），不是同步引入的，该单独修——但它说明
+「导出格式是对的」这个假设本来就不成立，不能拿它当同步的唯一真相。
+
+### 改法：信封，不动导出格式
+
+```
+{
+  "sync_format_version": 1,
+  "version": 17,                    // 同步用的版本号，每次写入 +1
+  "projectId": "p_xxx" | null,
+  "memoryEnabled": false,           // 显式写，不靠 undefined 语义
+  "pinned": true,
+  "compaction": { ... } | null,
+  "files": { "<fileId>": "<sha256>" },   // 附件原件在服务端的地址
+  "archive": { ... }                // 原样是 toSessionFile() 的输出
+}
+```
+
+内层一个字不改，所以「导出能开 = 同步能开」这条理由完全保住，已有 ZIP 也不受任何影响。
+外层补齐导出格式缺的三个字段（`projectId` / `memoryEnabled` / `compaction`），
+外加修正写死值的 `pinned`。`memoryEnabled` **一律显式写布尔**，不靠「不写就是开」——
+同步跨设备，那个默认值假设不成立。
+
+`rootMessageId` 不用进信封：它由内层 `messages` 的 `parent_id` 树重建，
+`buildTree()` 已经把它算回来了（`toLocal.ts:238`，返回在 `:271`）。
+
+反序列化：内层走现成的 `toLocalSession()`，外层字段再贴回去。不新写一套转换。
+
+**pinned 走信封还是修导出？** 两条都要：信封里放 `pinned` 让同步正确；同时单独提一个
+issue 修 `toArchive.ts:262`/`:274` 的硬编码，那是导出自己的 bug。两件事各走各的 PR。
 
 ## 五、App 侧改哪：本地是唯一读源 + 写穿队列
 
@@ -100,6 +142,9 @@ PUT    /files/<sha256>         → 上传附件原件，已存在直接 200（�
    `db.saveSession` 全仓只有一处调用，在 `src/services/chat/store.ts:258`；
    其余写口（`renameSession`、`setMemoryEnabled`、`setSessionProject`、`setSessionPinned`、
    `deleteSession`、`saveProject`、`deleteProject`）也都在 `src/services/chat/store.ts` 里。
+   **入队时拿的是完整的 `Session`，不是 `SessionFile`**——信封那三个字段（`projectId` /
+   `memoryEnabled` / `compaction`）加 `pinned` 在这一层还在，往下走到 `toSessionFile()` 就没了。
+   钩子必须在 `persist()` 内部、`db.saveSession` 之前取快照，晚了就只剩一个丢过字段的对象。
 2. **新模块 `syncQueue.ts`**：队列落在 IndexedDB（断网、被系统杀进程都不丢），
    后台按节流批量 PUT，成功后出队。失败留队，下次启动重试。
 3. **新模块 `syncPull.ts`**：启动时、以及定时拉 `GET /sessions?since=`，
@@ -111,8 +156,9 @@ PUT    /files/<sha256>         → 上传附件原件，已存在直接 200（�
 读口现状（不改）：`src/services/chat/backup.ts`、`src/services/chat/memoryDigest.ts`、
 `src/services/chat/store.ts`、`src/services/chat/history/exportArchive.ts`。
 
-附件走内容寻址：先算 SHA-256，`PUT /files/<sha256>`，会话 JSON 里的 `export_path`
-改成 sha256 引用即可（现在存的是 ZIP 内相对路径，同步侧另存一个字段，不动导出格式）。
+附件走内容寻址：先算 SHA-256，`PUT /files/<sha256>`。会话 JSON 里 `archive.messages[].fragments`
+的 `export_path` 存的是 ZIP 内相对路径，同步侧不动它，另在信封外挂一份 `files` 映射
+（`fileId → sha256`），这样导出格式一个字节不用改。
 
 ## 六、三种接入方式，各自成本
 
@@ -178,6 +224,8 @@ https + 自签证书并让设备信任。**每次换内网 IP 都得改配置、
 
 ### 其他
 
+- **导出格式自己有字段缺口**（第四节）：`pinned` 在 `toArchive.ts:262`/`:274` 写死 `false`，
+  导出再导入就丢置顶。这是导出链路的独立 bug，该单独修，不该由同步方案背。信封只是绕开它。
 - **附件体积**：内容寻址能省重复，但第一次同步仍要传完整原件。大批量导入的会话
   （几百条、带图）首次同步会很慢，需要进度显示——这类长任务必须有可见反馈，不能只有个灰按钮。
 - **删除是软删**：`DELETE` 只在列表里标 `deleted=true`，客户端据此删本地。
@@ -188,8 +236,12 @@ https + 自签证书并让设备信任。**每次换内网 IP 都得改配置、
 ## 九、开工顺序（12-20 之后）
 
 1. chat-sync 服务：存储 + 六个接口 + Bearer 鉴权 + CORS 头。先能跑，先本机 `curl` 通。
-2. 序列化对接：把 `toSessionFile()` 的输出原样存进去，`GET` 出来能用现成导入路径读回 `Session`。
-   这一步用「导出 ZIP → 上传 → 另一份空库拉下来 → 比对」验证。
+2. 序列化对接：把信封（第四节）原样存进去，`GET` 出来能读回 `Session`。
+   **验收基准必须是一条「关过记忆 + 归过项目 + 置顶过 + 压缩过」的会话**——
+   用干净会话测，上面四个字段丢了也看不出来。
+   做法：导出 ZIP → 上传 → 另一份空库拉下来 → 逐字段比对，
+   四条都要断言 `memoryEnabled === false`、`projectId` 相同、`pinned === true`、
+   `compaction.upTo` 相同。反过来也要测一遍：本地 `false` 的会话经同步回来仍是 `false`。
 3. App 侧 `syncQueue.ts`：先只做「写完入队、串行 PUT」，不做拉取。
 4. App 侧 `syncPull.ts`：启动拉一次，定时拉，冲突进副本分组。
 5. 接入方式：先在局域网跑通，再决定 Tailscale 还是 Tunnel。
